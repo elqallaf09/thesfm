@@ -110,6 +110,13 @@ export function tvSceneIssue(issue: string | undefined): TvSceneTextKey {
 }
 
 /** A retry deadline is never a quote observation or a promise of recovery. */
+/** A live forex source (not the daily reference) is answering, so the shared
+ * Twelve Data deadline must not slow or pause the screen. */
+export function tvForexHasLiveSource(quotes: TvQuote[]) {
+  return quotes.some(quote => quote.price !== null && Number.isFinite(quote.price) && quote.price > 0 && !quote.issue
+    && quote.changeBasis !== 'reference' && !['reference', 'stale', 'unavailable', 'unknown_time'].includes(quote.status));
+}
+
 export function tvStripRetryAt(quotes: TvQuote[], retryAt: string | null | undefined, now: number): string | null {
   return [retryAt, ...quotes.map(quote => quote.retryAt)].reduce<string | null>((earliest, value) => {
     if (!value || !(Date.parse(value) > now)) return earliest;
@@ -122,7 +129,7 @@ export function tvStripSourceCooling(quotes: TvQuote[], retryAt: string | null |
   if (retryAt && Date.parse(retryAt) > now) return true;
   // Forex pairs share one source budget, including a partial/reference response.
   // Other mixed-provider groups must keep their healthy price streams updating.
-  if (group === 'forex' && tvStripRetryAt(quotes, retryAt, now)) return true;
+  if (group === 'forex' && !tvForexHasLiveSource(quotes) && tvStripRetryAt(quotes, retryAt, now)) return true;
   if (!quotes.length || !quotes.every(quote => quote.issue === 'rate_limited')) return false;
   const deadlines = [retryAt, ...quotes.map(quote => quote.retryAt)].map(value => Date.parse(value || '')).filter(Number.isFinite);
   return !deadlines.length || deadlines.some(deadline => deadline > now);

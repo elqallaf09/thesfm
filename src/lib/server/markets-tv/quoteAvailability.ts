@@ -1,5 +1,6 @@
 import type { ProviderAttemptFailure } from '@/lib/market/marketDataProviders';
 import type { TvGroup, TvQuote } from '@/lib/markets-tv/types';
+import { tvForexHasLiveSource } from '@/lib/markets-tv/scene-display';
 
 export function tvProviderFailure(attempts: ProviderAttemptFailure[]): Pick<TvQuote, 'issue' | 'retryAt'> {
   const limited = attempts.filter(attempt => attempt.code === 'RATE_LIMITED');
@@ -19,6 +20,7 @@ export function tvProviderFailure(attempts: ProviderAttemptFailure[]): Pick<TvQu
  * supplies prices. Mixed-market snapshots must keep their healthy feeds moving.
  */
 export function tvSnapshotRetryAt(quotes: TvQuote[], now = Date.now(), group?: TvGroup): string | undefined {
+  if (group === 'forex' && tvForexHasLiveSource(quotes)) return undefined;
   if (group !== 'forex' && quotes.some(quote => !quote.issue && quote.price !== null && Number.isFinite(quote.price) && quote.price > 0)) return undefined;
   const next = quotes.map(quote => Date.parse(quote.retryAt || '')).filter(time => Number.isFinite(time) && time > now);
   return next.length ? new Date(Math.min(...next)).toISOString() : undefined;
