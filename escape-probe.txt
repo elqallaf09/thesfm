@@ -1,5 +1,0 @@
-A:\uFEFF
-B:\\uFEFF
-C:\u005cuFEFF
-D:\\u005cuFEFF
-END
