@@ -82,9 +82,9 @@
 @media(min-width:1300px) and (min-height:850px) {
  /* Let complete card content establish each row's minimum. A fixed button
     minimum inside zero-minimum tracks caused overlapping rows at 1080p. */
- .tv-portfolio-list[data-fit=true] { grid-auto-rows:minmax(min-content,1fr); align-content:stretch; }
+ .tv-portfolio-list[data-fit=true] { grid-auto-rows:minmax(min-content,1fr); align-content:stretch; row-gap:.1em; padding-block:0; }
  .tv-portfolio-list[data-fit=true] .tv-portfolio-position { display:flex; }
- .tv-screen .tv-portfolio-list[data-fit=true] .tv-portfolio-open { height:auto; min-height:0; padding-block:.4em; }
+ .tv-screen .tv-portfolio-list[data-fit=true] .tv-portfolio-open { height:auto; min-height:0; padding-block:.1em; }
 }
 @media(min-width:761px) and (max-width:1099px) {
  .tv-portfolio-list { grid-template-columns:minmax(0,1fr); }

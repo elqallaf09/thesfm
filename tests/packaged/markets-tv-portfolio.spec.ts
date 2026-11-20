@@ -122,12 +122,14 @@ test('display currency KWD to USD and back converts totals and manual holdings w
 for(const language of ['ar','en','fr'])for(const theme of ['light','dark'] as const)test(`twelve investments ${language}/${theme} fit together without pagination at TV sizes`,async({page},testInfo)=>{
  const data=fixture(1000,12);
  data.positions.forEach((position,index)=>{position.name=index%2?'Advanced Micro Devices Inc.':'ليرة فضة';position.symbol=index%2?'AMD':null;position.assetClass=index%2?'stocks':'gold-silver';position.source='Yahoo Finance';position.platform=index%4===1?'XTB':'zad';position.freshness='stale';position.valuedAt='2026-09-16T12:10:00Z';if(index>=6)position.baseCost=null;});
+ for(const index of [3,5,7,9,11])Object.assign(data.positions[index],{name:'Taiwan Semiconductor Manufacturing Co. Ltd. ADR',symbol:'TSM'});
  data.positions.forEach(position=>{position.holdingCurrency='KWD';position.holdingValue={amount:position.baseValue!*.307,currency:'KWD'};position.value=position.holdingValue;});
  // An unpriced record is still an investment and must remain visible.
  data.positions[11].baseValue=null;data.positions[11].value=null;data.positions[11].holdingValue=null;data.positions[11].baseCost=null;
  data.totalValue=data.positions.reduce((sum,position)=>sum+(position.baseValue??0),0);data.valueCoverage=11;data.costCoverage=6;data.totalCost=5400;
  data.allocation.forEach(group=>{const known=data.positions.filter(position=>position.assetClass===group.assetClass&&position.baseValue!==null);group.amount=known.reduce((sum,position)=>sum+position.baseValue!,0);group.count=known.length;});
  await page.route('**/api/tv/portfolio**',r=>r.fulfill({json:data}));
+ await page.route('https://www.google.com/s2/favicons?domain_url=https://www.tsmc.com&sz=128',r=>r.fulfill({contentType:'image/svg+xml',body:logoFixture}));
  await page.setViewportSize({width:1920,height:1080});await open(page,language,true,theme);
  await expect(page.locator('[data-tv-root]')).toHaveCSS('color-scheme',theme);
  await expect(page.locator('.tv-portfolio-metrics article')).toHaveCount(3);
@@ -137,6 +139,8 @@ for(const language of ['ar','en','fr'])for(const theme of ['light','dark'] as co
  await expect(page.locator('.tv-portfolio-position .tv-asset-icon')).toHaveCount(12);
  await expect(page.locator('[data-position="record-0"] .tv-asset-icon img')).toHaveAttribute('src',/markets-tv\/assets\/silver\.webp$/);
  await expect(page.locator('[data-position="record-1"] .tv-asset-icon img')).toHaveAttribute('src','https://cdn.simpleicons.org/amd');
+ await expect(page.locator('[data-position="record-3"] .tv-portfolio-name')).toHaveText('Taiwan Semiconductor Manufacturing Co. Ltd. ADR');
+ await expect(page.locator('[data-position="record-3"] .tv-asset-icon img')).toHaveAttribute('src','https://www.google.com/s2/favicons?domain_url=https://www.tsmc.com&sz=128');
  await expect.poll(()=>page.locator('.tv-portfolio-position .tv-asset-icon img').evaluateAll(images=>images.every(image=>(image as HTMLImageElement).complete&&(image as HTMLImageElement).naturalWidth>0))).toBe(true);
  await expect(page.locator('.tv-portfolio-positions .tv-broadcast-pager,.tv-portfolio-pagination')).toHaveCount(0);
  await expect(page.locator('[data-position="record-11"] .tv-portfolio-amount strong')).toContainText('\u2014');
