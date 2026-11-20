@@ -317,3 +317,43 @@ test('short TV portfolio details scroll by remote without losing currency eviden
  await expect(dialog).toHaveCount(0);await expect(trigger).toBeFocused();
  await expect(page.locator('[data-tv-root]')).toHaveAttribute('data-tv-view','investments');
 });
+
+test('short landscape browser shows whole holdings and advances the visible range', async ({ page }, testInfo) => {
+  const data = fixture(1000, 17);
+  for (const position of data.positions) {
+    position.holdingValue = { amount: 307, currency: 'KWD' };
+    position.holdingCurrency = 'KWD';
+  }
+  await page.route('**/api/tv/portfolio**', route => route.fulfill({ json: data }));
+  await page.setViewportSize({ width: 1200, height: 690 });
+  await open(page, 'ar');
+  const panel = page.locator('.tv-portfolio-list');
+  const range = page.locator('.tv-portfolio-range');
+  const checkRows = async () => {
+    await expect.poll(() => panel.evaluate(list => {
+      const bounds = list.getBoundingClientRect();
+      return [...list.children].filter(card => {
+        const row = card.getBoundingClientRect();
+        return row.bottom > bounds.top + 1 && row.top < bounds.bottom - 1
+          && (row.top < bounds.top - 1 || row.bottom > bounds.bottom + 1);
+      }).length;
+    })).toBe(0);
+  };
+  await expect(range.locator('bdi')).toHaveText(/^1–\d+ \/ 17$/);
+  await checkRows();
+  await range.getByRole('button', { name: 'التالي' }).click();
+  await expect(range.locator('bdi')).not.toHaveText(/^1–/);
+  await checkRows();
+  await range.getByRole('button', { name: 'السابق' }).click();
+  await expect(range.locator('bdi')).toHaveText(/^1–/);
+  await checkRows();
+  await range.getByRole('button', { name: 'السابق' }).click();
+  await expect(page.locator('[data-position="record-16"]')).toBeInViewport({ ratio: 1 });
+  await checkRows();
+  await page.setViewportSize({ width: 1536, height: 872 });
+  await checkRows();
+  await page.screenshot({ path: testInfo.outputPath('portfolio-huawei-browser.png') });
+  await page.locator('.tv-portfolio-actions select').first().selectOption('real-estate');
+  await expect(range).toHaveCount(0);
+  await expect(page.locator('.tv-portfolio-empty')).toBeVisible();
+});

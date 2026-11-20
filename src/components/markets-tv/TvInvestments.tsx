@@ -1,7 +1,7 @@
 'use client';
 import '@/app/tv/portfolio.css';
-import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
-import { Building2, ChartPie, Coins, Landmark, Layers3, Package, RefreshCw, ShieldCheck, WalletCards, X } from 'lucide-react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Building2, ChartPie, ChevronDown, Coins, Landmark, Layers3, Package, RefreshCw, ShieldCheck, WalletCards, X } from 'lucide-react';
 import type { TvLanguage } from '@/lib/markets-tv/types';
 import type { TvPortfolioPosition, TvPortfolioSnapshot } from '@/lib/markets-tv/portfolio';
 import { metalFromSymbol } from '@/lib/metalVisuals';
@@ -10,6 +10,7 @@ import { tvQuoteTime, tvText } from '@/lib/markets-tv/i18n';
 import { useTvResource } from './useTvResource';
 import { TvBroadcastPager } from './TvBroadcastPager';
 import { useTvBroadcastPage } from './useTvBroadcastPage';
+import { TvPortfolioList } from './TvPortfolioList';
 import { TvAssetIcon } from './TvAssetIcon';
 import { tvRemoteCommand } from './tvRemoteKeys';
 
@@ -43,7 +44,7 @@ function PortfolioAmount({ position, currency, language, capital = false }: { po
   const native = capital ? position.cost : position.holdingValue ?? position.value;
   const quote = !capital && !position.holdingValue && position.holdingCurrency !== undefined && position.holdingCurrency !== position.value?.currency;
   return <span className="tv-portfolio-values"><strong className="tv-portfolio-display" dir="ltr">{money(value, currency)} <small>{currency}</small></strong>
-    {native && (native.currency !== currency || value === null || quote) && <span className="tv-portfolio-native" data-value-kind={quote ? 'quote' : 'original'}>{portfolioText(language, quote ? 'quoteCurrency' : 'originalValue')} <bdi>{money(native.amount, native.currency)} {native.currency}</bdi></span>}
+    {native && (native.currency !== currency || value === null || quote) && <span className="tv-portfolio-native" data-value-kind={quote ? 'quote' : 'original'}>{portfolioText(language, quote ? 'quoteCurrency' : 'originalValue')} <bdi dir="ltr">{money(native.amount, native.currency)} {native.currency}</bdi></span>}
   </span>;
 }
 function statusLabel(position: TvPortfolioPosition, language: TvLanguage) {
@@ -129,7 +130,8 @@ export default function TvInvestments({ token, language, revision, now, onPair, 
   useEffect(() => { try { const saved = localStorage.getItem('sfm_currency'); if (saved && /^[A-Z]{3}$/.test(saved)) setCurrency(saved); } catch { /* Account preference remains the default. */ } }, []);
   const resource = useTvResource<TvPortfolioSnapshot>(token ? `/api/tv/portfolio${currency ? `?currency=${currency}` : ''}` : null, 15000, token, revision);
   const data = resource.data, expired = resource.errorStatus === 401 || resource.errorStatus === 403;
-  const positions = data?.positions.filter(item => assetClass === 'all' || item.assetClass === assetClass) || [];
+  const holdings = data?.positions;
+  const positions = useMemo(() => holdings?.filter(item => assetClass === 'all' || item.assetClass === assetClass) || [], [holdings, assetClass]);
   const detail = token && !expired && selected?.token === token ? data?.positions.find(item => item.id === selected.id) : null;
   const allocation = data?.allocation || [], allocationPages = Math.max(1, Math.ceil(allocation.length / 4));
   const allocationPage = useTvBroadcastPage(allocationPages, autoRotate && !expired && !suspended && !detail);
@@ -142,8 +144,21 @@ export default function TvInvestments({ token, language, revision, now, onPair, 
   const marketCount = data?.positions.filter(item => item.valuationKind === 'market').length ?? 0;
   const basis = !marketCoverage ? 'recordedValues' : marketCoverage < (data?.valueCoverage ?? 0) ? 'mixedValues' : 'marketValues';
   return <section className="tv-portfolio" aria-labelledby="tv-portfolio-title">
-    <header className="tv-portfolio-heading"><div><h1 id="tv-portfolio-title"><WalletCards aria-hidden="true"/>{text('title')}</h1><p>{text('subtitle')}</p></div><div className="tv-portfolio-actions">
-      {token && !expired && <><label>{text('assetClass')}<select aria-label={text('assetClass')} value={assetClass} onChange={event => setAssetClass(event.target.value)}><option value="all">{text('all')}</option>{CLASSES.map(value => <option key={value} value={value}>{text(value)}</option>)}</select></label><label>{text('currency')}<select aria-label={text('currency')} value={displayCurrency} onChange={event => { setCurrency(event.target.value); try { localStorage.setItem('sfm_currency', event.target.value); } catch { /* In-memory selection remains available. */ } }}>{currencies.map(code => <option key={code}>{code}</option>)}</select></label></>}
+    <header className="tv-portfolio-heading"><div><h1 id="tv-portfolio-title"><WalletCards aria-hidden="true"/>{text('title')}</h1></div><div className="tv-portfolio-actions">
+      {token && !expired && <>
+        <label>{text('assetClass')}<span className="tv-portfolio-select">
+          <select aria-label={text('assetClass')} value={assetClass} onChange={event => setAssetClass(event.target.value)}>
+            <option value="all">{text('all')}</option>
+            {CLASSES.map(value => <option key={value} value={value}>{text(value)}</option>)}
+          </select><ChevronDown aria-hidden="true"/>
+        </span></label>
+        <label>{text('currency')}<span className="tv-portfolio-select">
+          <select aria-label={text('currency')} value={displayCurrency} onChange={event => {
+            setCurrency(event.target.value);
+            try { localStorage.setItem('sfm_currency', event.target.value); } catch { /* In-memory selection remains available. */ }
+          }}>{currencies.map(code => <option key={code}>{code}</option>)}</select><ChevronDown aria-hidden="true"/>
+        </span></label>
+      </>}
       <button type="button" aria-label={tvText(language, 'refresh')} onClick={onRefresh}><RefreshCw aria-hidden="true"/></button>
     </div></header>
     {!token || expired ? <div className="tv-portfolio-gate"><ShieldCheck aria-hidden="true"/><h2>{text(expired ? 'expired' : 'pair')}</h2><p>{text('pairHelp')}</p><button onClick={onPair}>{tvText(language, 'pair')}</button></div>
@@ -152,20 +167,20 @@ export default function TvInvestments({ token, language, revision, now, onPair, 
           : <>
             {resource.error && <p className="tv-portfolio-error" role="status">{text('failed')}</p>}
             <div className="tv-portfolio-metrics">
-              <article><h2>{text('value')}</h2><strong dir="ltr" data-long={money(data.totalValue, data.currency).length > 14 ? 'true' : undefined}>{money(data.totalValue, data.currency)} <small>{data.currency}</small></strong><p>{data.valueCoverage < data.total ? <>{text('partial')} · <Coverage count={data.valueCoverage} total={data.total} language={language}/></> : text(basis)}</p></article>
+              <article className="tv-portfolio-total"><h2>{text('value')}</h2><strong dir="ltr" data-long={money(data.totalValue, data.currency).length > 14 ? 'true' : undefined}>{money(data.totalValue, data.currency)} <small>{data.currency}</small></strong><p>{data.valueCoverage < data.total ? <>{text('partial')} · <Coverage count={data.valueCoverage} total={data.total} language={language}/></> : text(basis)}</p></article>
               <article><h2>{text('capital')}</h2><strong dir="ltr" data-long={money(data.totalCost, data.currency).length > 14 ? 'true' : undefined}>{money(data.totalCost, data.currency)} <small>{data.currency}</small></strong><p><Coverage count={data.costCoverage} total={data.total} language={language}/></p></article>
               <article><h2>{text('positions')}</h2><strong dir="ltr">{data.total}</strong><p>{(data.marketEligible ?? 0) > 0 ? <>{text('marketCoverage')}: <bdi>{marketCount}</bdi> {text('of')} <bdi>{data.marketEligible}</bdi></> : <>{text('coverage')}: <bdi>{data.valueCoverage}</bdi> {text('of')} <bdi>{data.total}</bdi></>}</p></article>
             </div>
             {!data.total ? <div className="tv-portfolio-gate"><WalletCards aria-hidden="true"/><h2>{text('empty')}</h2><p>{text('emptyHelp')}</p></div> : <div className="tv-portfolio-body">
-              <section className="tv-portfolio-positions" aria-label={text('positions')}><header className="tv-broadcast-heading"><h2>{text('positions')} <bdi>{positions.length}</bdi></h2><span className="tv-portfolio-open-hint">{text('openDetails')}</span></header>
-                <div key={assetClass} className="tv-portfolio-list" data-fit={positions.length > 8 && positions.length <= 12 ? 'true' : undefined}>{positions.length ? positions.map(item => <article key={item.id} className="tv-portfolio-position" data-position={item.id}>
+              <TvPortfolioList key={assetClass} positions={positions} language={language}>
+                {positions.length ? positions.map(item => <article key={item.id} className="tv-portfolio-position" data-position={item.id}>
                     <button className="tv-portfolio-open" type="button" aria-haspopup="dialog" aria-controls={detail?.id === item.id ? 'tv-portfolio-dialog' : undefined}
                       data-tv-focus-key={`position:${item.id}`} onClick={() => setSelected({ id: item.id, token })}>
-                      <span className="tv-portfolio-identity"><InvestmentIcon position={item}/><span className="tv-portfolio-identity-text"><span role="heading" aria-level={3} className="tv-portfolio-name" dir="auto">{item.name || item.symbol || '—'}</span><span className="tv-portfolio-meta"><bdi>{item.symbol}</bdi><bdi className="tv-portfolio-platform">{item.platform || text(item.assetClass as PortfolioTextKey)}</bdi></span></span></span>
-                      <span className="tv-portfolio-amount"><PortfolioAmount position={item} currency={data.currency} language={language}/><PositionStatus position={item} language={language}/></span>
+                      <span className="tv-portfolio-card-content"><span className="tv-portfolio-identity"><InvestmentIcon position={item}/><span className="tv-portfolio-identity-text"><span role="heading" aria-level={3} className="tv-portfolio-name" dir="auto">{item.name || item.symbol || '—'}</span><span className="tv-portfolio-meta"><bdi>{item.symbol}</bdi><bdi className="tv-portfolio-platform">{item.platform || text(item.assetClass as PortfolioTextKey)}</bdi></span></span></span>
+                      <span className="tv-portfolio-amount"><PortfolioAmount position={item} currency={data.currency} language={language}/><PositionStatus position={item} language={language}/></span></span>
                     </button>
-                  </article>) : <p className="tv-portfolio-empty">{text('emptyFilter')}</p>}</div>
-              </section>
+                  </article>) : <p className="tv-portfolio-empty">{text('emptyFilter')}</p>}
+              </TvPortfolioList>
               <aside className="tv-portfolio-allocation"><header className="tv-broadcast-heading"><h2>{text(marketCoverage ? 'allocation' : 'allocationRecorded')}</h2><TvBroadcastPager page={allocationPage.current} pages={allocationPages} language={language} move={allocationPage.move}/></header><p>{text(basis)} · <bdi>{data.currency}</bdi></p>
                 {allocation.length > 0 && (data.totalValue ?? 0) > 0 ? <div className="tv-allocation-list">{allocation.slice(allocationPage.current * 4, (allocationPage.current + 1) * 4).map(item => <div key={item.assetClass}><div><span>{text(item.assetClass as PortfolioTextKey)}</span><bdi>{((item.amount / data.totalValue!) * 100).toFixed(1)}%</bdi></div><meter min={0} max={data.totalValue!} value={item.amount} aria-label={text(item.assetClass as PortfolioTextKey)}/><bdi>{money(item.amount, data.currency)} {data.currency}</bdi></div>)}</div> : <p>{text('unavailable')}</p>}
               </aside>

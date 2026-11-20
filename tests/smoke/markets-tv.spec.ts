@@ -1,4 +1,4 @@
-import { openTvMenu, closeTvMenu, openTvHeaderActions, closeTvHeaderActions, chooseTvDestination } from './helpers/tv-controls';
+import { openTvMenu, closeTvMenu, openTvHeaderActions, closeTvHeaderActions, chooseTvDestination, selectTvProfile } from './helpers/tv-controls';
 import { expect, test } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
@@ -126,11 +126,23 @@ test('TV fits a television and supports remote focus, languages and QR details',
   expect(errors).toEqual([]);
 });
 
-test('phone pairing keeps the QR code out of the login query', async ({ page }) => {
+test('phone pairing keeps the QR code out of the login query', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.route('**/api/tv/account', route => route.fulfill({ status: 401, json: { code: 'UNAUTHORIZED' } }));
   await page.goto('/tv/pair#ABCDEF123456');
   const login = page.getByRole('link', { name: 'تسجيل الدخول للمتابعة', exact: true });
   await expect(login).toHaveAttribute('href', '/login?next=%2Ftv%2Fpair');
+  await expect(page.getByText('ABCD EF12 3456')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'أجهزتي المرتبطة' })).toHaveCount(0);
+  await expect(page.locator('.tv-pair-primary')).toBeInViewport({ ratio: 1 });
+  expect((await login.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  await page.screenshot({ path: testInfo.outputPath('pair-phone-ar.png') });
+  await page.setViewportSize({ width: 320, height: 667 });
+  await expect(login).toBeInViewport({ ratio: 1 });
+  await page.getByRole('button', { name: 'Français' }).click();
+  await expect(page.locator('.tv-pair-page')).toHaveAttribute('dir', 'ltr');
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Associer mon téléviseur' })).toBeVisible();
   expect(await page.evaluate(() => sessionStorage.getItem('sfm-tv-pair-code'))).toBe('ABCDEF123456');
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(await page.evaluate(() => innerWidth + 2));
 });
@@ -258,4 +270,80 @@ test('strips page fills the viewport, browses all rows and omits dashboard reque
   await chooseTvDestination(page, 'hall');
   await expect(page).toHaveURL(/\/tv$/);
   await expect(page.locator('.tv-strips-only')).toHaveCount(0);
+});
+
+test('phone pairing distinguishes loading, retry, approval and linked devices', async ({ page }) => {
+  let fail = true, linked = false;
+  const selectedCode = 'A1B2C3D4E5F6';
+  await page.route('**/api/tv/account', async route => {
+    const method = route.request().method();
+    if (method === 'POST') {
+      if (route.request().postDataJSON().code !== selectedCode) return route.fulfill({ status: 400, json: { code: 'INVALID_CODE' } });
+      linked = true;
+    } else if (method === 'DELETE') linked = false;
+    else if (fail) return route.fulfill({ status: 503, json: { code: 'DEVICE_UNAVAILABLE' } });
+    await route.fulfill({ json: { devices: linked ? [{ id: 'qa-tv', name: 'Living room TV', expires_at: '2027-01-01T00:00:00Z' }] : [] } });
+  });
+  await page.goto('/tv/pair');
+  await expect(page.getByRole('button', { name: 'إعادة المحاولة' })).toBeVisible();
+  await expect(page.getByRole('textbox')).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'أجهزتي المرتبطة' })).toHaveCount(0);
+  fail = false;
+  await page.getByRole('button', { name: 'إعادة المحاولة' }).click();
+  const input = page.getByRole('textbox', { name: 'رمز الربط' });
+  const approve = page.getByRole('button', { name: 'الموافقة على ربط التلفزيون' });
+  await expect(approve).toBeDisabled();
+  await input.fill('FFFF FFFF FFFF');
+  await approve.click();
+  await expect(input).toHaveAttribute('aria-invalid', 'true');
+  await input.fill('A1B2-C3D4-E5F6');
+  await approve.click();
+  await expect(page.getByRole('status')).toContainText('تم الربط');
+  await expect(page.getByText('Living room TV')).toBeVisible();
+  await page.getByRole('button', { name: 'إلغاء الوصول' }).click();
+  await expect(page.getByText('لا توجد أجهزة مرتبطة')).toBeVisible();
+});
+
+test('investments deep link fits the actual tablet browser viewport', async ({ page }, testInfo) => {
+  const settings = { language: 'ar', theme: 'light', displayMode: 'viewing', sessionAutoRotate: false };
+  await page.addInitScript(value => {
+    localStorage.setItem('sfm-markets-tv-device-v1', 'f'.repeat(64));
+    localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify(value));
+  }, settings);
+  await page.route('**/api/tv/device', route => route.fulfill({ json: {
+    device: { id: 'test-device', name: 'Test TV', settings }, symbols: [], alerts: [],
+  } }));
+  const names = ['صندوق أسهم تجريبي', 'أرض سكنية تجريبية', 'Global Equity Fund'];
+  const positions = Array.from({length: 12}, (_, i) => ({
+    id: String(i), name: names[i % 3], platform: 'SFM', symbol: null, assetClass: i % 3 === 1 ? 'real-estate' : 'funds',
+    value: { amount: 100, currency: 'USD' }, holdingValue: { amount: 100, currency: 'USD' },
+    holdingCurrency: 'USD', baseValue: 30, baseCost: 30, freshness: 'recorded', valuationKind: 'manual',
+  }));
+  await page.route('**/api/tv/portfolio**', route => route.fulfill({ json: {
+    currency: 'KWD', generatedAt: '2026-11-20T12:00:00Z', total: 12, positions,
+    totalValue: 360, valueCoverage: 12, totalCost: 360, costCoverage: 12,
+    allocation: [{ assetClass: 'funds', amount: 240, count: 8 }, { assetClass: 'real-estate', amount: 120, count: 4 }],
+  } }));
+  await page.setViewportSize({ width: 1536, height: 872 });
+  await page.goto('/tv?channel=investments');
+  await selectTvProfile(page, 0);
+  await closeTvMenu(page);
+  await expect(page.locator('.tv-portfolio-position')).toHaveCount(12);
+  await expect(page.locator('.tv-portfolio-native').first()).toContainText('100.00 USD');
+  await page.evaluate(() => document.fonts.ready);
+  const list = page.locator('.tv-portfolio-list');
+  for (const size of [{ width: 1536, height: 872 }, { width: 1228, height: 690 }]) {
+    await page.setViewportSize(size);
+    await expect(page.locator('.tv-portfolio-footer')).toBeInViewport({ ratio: 1 });
+    await expect.poll(() => list.evaluate(element => {
+      const bounds = element.getBoundingClientRect();
+      return [...element.children].every(card => {
+        const row = card.getBoundingClientRect();
+        return row.bottom <= bounds.top + 1 || row.top >= bounds.bottom - 1
+          || (row.top >= bounds.top - 1 && row.bottom <= bounds.bottom + 1);
+      });
+    })).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth && document.documentElement.scrollHeight <= innerHeight + 1)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath(`portfolio-site-${size.width}.png`) });
+  }
 });
