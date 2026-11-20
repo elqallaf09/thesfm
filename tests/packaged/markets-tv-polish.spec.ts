@@ -115,16 +115,21 @@ test('welcome plays once per app session, survives navigation and reload, and st
   await freshSession.close();
 });
 
-test('unpriced stocks stay hidden until a refresh supplies a price, and news has no boxed transport controls', async ({ page }) => {
+test('directory keeps unavailable stocks while ticker waits for prices, and news has no boxed transport controls', async ({ page }) => {
   await page.clock.install();
   await setup(page, 2); await page.keyboard.press('Shift');
   await expect(page.locator('.tv-marquee-set').first().locator('button')).toHaveCount(1);
-  await expect(page.locator('.tv-hall-row')).toHaveCount(1);
-  await expect(page.locator('.tv-hall-rows')).not.toContainText('QA1');
+  await expect(page.locator('.tv-hall-row')).toHaveCount(2);
+  const awaitingQuote = page.locator('.tv-hall-row').filter({ hasText: 'QA1' });
+  await expect(awaitingQuote).toBeVisible();
+  await expect(awaitingQuote.locator('.tv-hall-price strong')).toHaveText('—');
+  await expect(page.locator('.tv-marquee-set').first()).not.toContainText('QA1');
   await page.route('**/api/tv/snapshot?*', route => route.fulfill({ json: { quotes: [0, 1].map(i => ({ symbol: `QA${i}`, name: `Test ${i}`, price: 10, currency: 'USD', changePercent: 1, source: 'QA source', observedAt: new Date().toISOString(), status: 'delayed', exchange: 'US' })), available: 2, total: 2 } }));
   await page.clock.fastForward(61_000);
   await expect(page.locator('.tv-hall-row')).toHaveCount(2);
+  await expect(awaitingQuote.locator('.tv-hall-price strong')).toHaveText('10.00');
   await expect(page.locator('.tv-marquee-set').first().locator('button')).toHaveCount(2);
+  await expect(page.locator('.tv-marquee-set').first()).toContainText('QA1');
   await expect(page.locator('.tv-headline-controls,.tv-headline-playback,button.tv-headline-label')).toHaveCount(0);
   await expect(page.locator('.tv-headline-story')).toHaveCount(8);
   const headlines = await page.locator('.tv-headline-story .tv-news-title').allTextContents();
