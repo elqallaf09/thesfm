@@ -16,13 +16,16 @@ const markets: TvMarket[] = Array.from({ length: 17 }, (_, index) => ({
   status: index === 16 ? 'unavailable' : 'directory',
 }));
 
-async function openPicker(page: Page, language: TvLanguage, theme: 'light' | 'dark', directory = markets) {
-  await page.addInitScript(({ language, theme }) => {
+async function openPicker(page: Page, language: TvLanguage, theme: 'light' | 'dark', directory = markets, options: { marketIds?: string[]; profile?: number } = {}) {
+  await page.addInitScript(({ language, theme, marketIds }) => {
     sessionStorage.setItem('sfm-tv-welcome-shown', '1');
-    localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ language, theme, scene: 'world', autoRotate: false }));
-  }, { language, theme });
+    if (!localStorage.getItem('sfm-markets-tv-settings-v1')) {
+      localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ language, theme, marketIds, scene: 'world', autoRotate: false }));
+    }
+  }, { language, theme, marketIds: options.marketIds });
   await page.route('**/api/**', route => {
     const pathname = new URL(route.request().url()).pathname;
+    if (pathname.endsWith('/device')) return route.fallback();
     if (pathname.endsWith('/catalog')) return route.fulfill({ json: { markets: directory } });
     if (pathname.endsWith('/news')) return route.fulfill({ json: { stories: [] } });
     if (pathname.endsWith('/snapshot')) return route.fulfill({ json: {
@@ -30,7 +33,7 @@ async function openPicker(page: Page, language: TvLanguage, theme: 'light' | 'da
     } });
     return route.fulfill({ json: { items: [], total: 0, directoryTotal: 0, points: [] } });
   });
-  await openAndroidTvPackage(page);
+  await openAndroidTvPackage(page, { profile: options.profile });
   await openTvMenu(page);
   await page.locator('[data-tv-focus-key="customize"]').click();
   await expect(page.locator('.tv-market-picker-tv')).toBeVisible();
@@ -103,7 +106,7 @@ for (const language of ['ar', 'en', 'fr'] as const) {
       for (const [width, height] of [[900, 500], [960, 540], [1280, 720], [1920, 1080], [1610, 1293], [2560, 1440]]) {
         await page.setViewportSize({ width, height });
         for (const index of [0, 16]) {
-          await page.locator(`[data-tv-focus-key="market-QA_${index}"]`).click();
+          await page.locator(`[data-tv-focus-key="market-QA_${index}"]`).focus();
           await expectOnePage(page);
           const name = page.locator('.tv-market-editor h3');
           expect(await name.evaluate(element => element.scrollHeight <= element.clientHeight + 1 && element.scrollWidth <= element.clientWidth + 1)).toBe(true);
@@ -130,7 +133,7 @@ test(`large market directory ${language}: one canvas with full selected names an
   await openPicker(page, language, 'light', directory);
   for (const [width, height] of [[900, 500], [960, 540], [1280, 720], [1920, 1080], [2560, 1440]]) {
     await page.setViewportSize({ width, height });
-    await page.locator('[data-tv-focus-key="market-QA_80"]').click();
+    await page.locator('[data-tv-focus-key="market-QA_80"]').focus();
     await expect(page.locator('.tv-market-editor h3')).toHaveText(language === 'ar' ? directory[80].labelAr : language === 'en' ? directory[80].labelEn : directory[80].labelFr);
     await expectOnePage(page);
     await expect(page.locator('.tv-market-row')).toHaveCount(81);
@@ -145,6 +148,81 @@ test(`large market directory ${language}: one canvas with full selected names an
 });
 
 }
+
+test('checkbox, market name and remote OK change the markets actually shown after save and reload', async ({ page }) => {
+  const directory = Array.from({ length: 88 }, (_, i) => ({ ...markets[i % markets.length], id: `QA_${i}` }));
+  const startingIds = directory.slice(0, 13).map(market => market.id);
+  await openPicker(page, 'ar', 'light', directory, { marketIds: startingIds });
+  const key = (id: string) => page.locator(`[data-tv-focus-key="${id}"]`);
+  const added = key('market-QA_87');
+  await expect(key('markets-selected')).toContainText('13');
+  await expect(added).not.toBeChecked();
+  await added.locator('.tv-market-check').click();
+  await expect(added).toBeChecked();
+  await expect(key('markets-selected')).toContainText('14');
+  await key('market-QA_0').locator('strong').click();
+  await expect(key('market-QA_0')).not.toBeChecked();
+  await added.press('Enter');
+  await expect(added).not.toBeChecked();
+  await added.press('Enter');
+  await expect(added).toBeChecked();
+  await key('markets-selected').click();
+  await expect(page.locator('.tv-market-row')).toHaveCount(13);
+  await key('market-QA_1').press('Space');
+  await expect(page.locator('.tv-market-row')).toHaveCount(12);
+  await expect(key('market-QA_1')).toHaveCount(0);
+  await key('markets-done').click();
+  const shown = page.locator('.tv-market-strip');
+  const expected = [...startingIds.slice(2), 'QA_87'];
+  await expect.poll(() => shown.evaluateAll(rows => rows.map(row => row.getAttribute('data-market')))).toEqual(expected);
+  await page.reload();
+  await expect.poll(() => shown.evaluateAll(rows => rows.map(row => row.getAttribute('data-market')))).toEqual(expected);
+});
+
+test('late account settings preserve and sync the market edit made on this device', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('sfm-markets-tv-device-v1', 'a'.repeat(64)));
+  let finishLookup!: () => void;
+  const pendingLookup = new Promise<void>(resolve => { finishLookup = resolve; });
+  let savedIds: string[] | undefined;
+  await page.route('**/api/tv/device', async route => {
+    if (route.request().method() === 'PATCH') {
+      savedIds = route.request().postDataJSON().settings.marketIds;
+      return route.fulfill({ json: {} });
+    }
+    await pendingLookup;
+    return route.fulfill({ json: { device: { id: 'qa-tv', name: 'TV', settings: { marketIds: [] } }, symbols: [], alerts: [] } });
+  });
+  await openPicker(page, 'ar', 'dark', markets, { profile: 0, marketIds: ['QA_2'] });
+  const row = page.locator('[data-tv-focus-key="market-QA_5"]');
+  await row.click();
+  await expect(row).toBeChecked();
+  finishLookup();
+  await expect.poll(() => savedIds).toEqual(['QA_2', 'QA_5']);
+  await expect(row).toBeChecked();
+});
+
+test.describe('touch market selection', () => {
+  test.use({ hasTouch: true });
+  test('tablet checkmark and phone market switch share the same selection', async ({ page }) => {
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await openPicker(page, 'ar', 'light', markets, { marketIds: [] });
+    const row = page.locator('[data-tv-focus-key="market-QA_3"]');
+    await row.locator('.tv-market-check').tap();
+    await expect(row).toBeChecked();
+    await page.setViewportSize({ width: 390, height: 844 });
+    const select = page.locator('.tv-picker-mobile-market select');
+    await select.selectOption('QA_3');
+    const toggle = page.getByRole('switch');
+    await expect(toggle).toBeChecked();
+    await toggle.tap();
+    await expect(toggle).not.toBeChecked();
+    await select.selectOption('QA_5');
+    await toggle.tap();
+    await page.locator('[data-tv-focus-key="markets-done"]').tap();
+    await expect(page.locator('.tv-market-strip')).toHaveCount(1);
+    await expect(page.locator('.tv-market-strip')).toHaveAttribute('data-market', 'QA_5');
+  });
+});
 
 test('remote changes the region and enters its results with arrows and OK without Tab', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
@@ -169,6 +247,8 @@ test('remote opens market options, reaches save, and preserves order, selection 
   await openPicker(page, 'ar', 'dark');
   await page.locator('[data-tv-focus-key="market-QA_5"]').focus();
   await expect(page.locator('.tv-market-editor h3')).toHaveText(markets[5].labelAr);
+  await page.keyboard.press('ArrowLeft');
+  await expect(page.locator('.tv-market-options:focus')).toHaveCount(1);
   await page.keyboard.press('Enter');
   await expect(page.locator('[data-tv-focus-key="market-visible"]')).toBeFocused();
   const fast = page.locator(`[data-tv-focus-key="market-speed-${TV_STRIP_SPEEDS[2]}"]`);
@@ -221,6 +301,8 @@ test('remote skips disabled options and still reaches save for a single empty ma
   await page.setViewportSize({ width: 1280, height: 720 });
   await openPicker(page, 'ar', 'light', [{ ...markets[0], count: 0, status: 'unavailable' }]);
   await page.locator('[data-tv-focus-key="market-QA_0"]').focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect(page.locator('.tv-market-options:focus')).toHaveCount(1);
   await page.keyboard.press('Enter');
   await expect(page.locator('[data-tv-focus-key="market-visible"]')).toBeFocused();
   await expect(page.locator('[data-tv-focus-key="market-instruments"]')).toBeDisabled();
