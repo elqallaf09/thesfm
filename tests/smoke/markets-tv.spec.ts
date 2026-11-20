@@ -293,6 +293,7 @@ test('phone pairing distinguishes loading, retry, approval and linked devices', 
   const input = page.getByRole('textbox', { name: 'رمز الربط' });
   const approve = page.getByRole('button', { name: 'الموافقة على ربط التلفزيون' });
   await expect(approve).toBeDisabled();
+  await expect(page.getByText('ستجد رمز الربط على التلفزيون', { exact: false })).toBeVisible();
   await input.fill('FFFF FFFF FFFF');
   await approve.click();
   await expect(input).toHaveAttribute('aria-invalid', 'true');

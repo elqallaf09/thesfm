@@ -10,6 +10,11 @@ import { TvBrandMark } from './TvBrandMark';
 
 const languages = { ar: 'العربية', en: 'English', fr: 'Français' } as const;
 const heading = { ar: 'ربط التلفزيون بحسابي', en: 'Link my TV', fr: 'Associer mon téléviseur' };
+const manualCodeHelp = {
+  ar: 'ستجد رمز الربط على التلفزيون عند اختيار «ربط حسابي».',
+  en: 'Choose “Link my account” on your TV to find the pairing code.',
+  fr: 'Choisissez « Lier mon compte » sur le téléviseur pour afficher le code.',
+};
 const linkAnother = { ar: 'ربط تلفزيون آخر', en: 'Link another TV', fr: 'Associer un autre téléviseur' };
 const expiry = { ar: 'ينتهي الربط', en: 'Link expires', fr: 'Fin de validité' };
 const codeKey = 'sfm-tv-pair-code';
@@ -84,7 +89,7 @@ export function TvAccount() {
         <p>{t('pairScope')}</p>
         {(needsLogin || devices) && result !== 'approveSuccess' && <>
           {needsLogin && valid && <div className="tv-pair-preview"><span>{t('code')}</span><bdi dir="ltr">{normalized.match(/.{4}/g)?.join(' ')}</bdi></div>}
-          <p className="tv-pair-guidance"><ShieldCheck aria-hidden="true"/>{t('onlyOwnTv')}</p>
+          <p className="tv-pair-guidance"><ShieldCheck aria-hidden="true"/>{valid ? t('onlyOwnTv') : manualCodeHelp[language]}</p>
         </>}
         {needsLogin ? <Link className="tv-pair-primary" href={loginHref}><LogIn aria-hidden="true"/>{t('signIn')}</Link>
           : devices && result === 'approveSuccess' ? null
