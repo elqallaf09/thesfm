@@ -53,4 +53,5 @@ Navigation/bridge unit tests and CI typecheck/export/iOS project generation cove
 the app shell. A real signed iPhone build still needs testing: cookies and pairing,
 private investments, portrait/landscape on small screens, light/dark transitions,
 news links, loading failure/retry, and the existing site's one-time introduction.
-Startup audio remains subject to iOS user-gesture playback rules.
+The iOS WebView starts the logo sound automatically once per app launch. Check the
+ident on a physical device at audible media volume, then refresh and return home.
