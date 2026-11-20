@@ -18,7 +18,7 @@ await mkdir(resolve(out, 'markets-tv'), { recursive: true });
 await copyFile(resolve(root, 'public/markets-tv/world-dotted-map.png'), resolve(out, 'markets-tv/world-dotted-map.png'));
 await copyFile(resolve(root, 'public/brand/sfm-original-logo.png'), resolve(out, 'markets-tv/sfm-logo.png'));
 // Static, locally bundled decoration and TV-specific brand asset. No remote artwork requests.
-for (const name of ['sfm-emerald-mark.webp', 'exchange-panorama.webp']) {
+for (const name of ['sfm-emerald-mark.webp', 'exchange-panorama.webp', 'sfm-news-fallback.webp']) {
   await copyFile(resolve(root, 'public/markets-tv', name), resolve(out, 'markets-tv', name));
 }
 await cp(resolve(root, 'public/markets-tv/assets'), resolve(out, 'markets-tv/assets'), { recursive: true });
