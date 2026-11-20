@@ -16,7 +16,7 @@ async function openBrief(page: Page, changes: number[], language: TvLanguage, th
   const summary = changes.map((changePercent, index): TvQuote => {
     const [symbol, name, nameAr] = instruments[index];
     return { symbol, name, nameAr, changePercent, price: 1000 + index, currency: null, status: 'delayed',
-      changeBasis: 'session', delayType: 'delayed', observedAt, source: 'QA', exchange: null, country: null };
+      changeBasis: 'session', delayType: 'delayed', observedAt, receivedAt: observedAt, source: 'QA', exchange: null, country: null };
   });
   await page.addInitScript(settings => localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify(settings)), { language, theme });
   await page.route('**/api/tv/snapshot?*', route => route.fulfill({ json: {
