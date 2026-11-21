@@ -37,7 +37,7 @@ const METAL_TICKER: MetalTickerConfig[] = [
   { id: 'palladium', symbol: 'PA=F', name: 'Palladium', assetType: 'unknown', currency: 'USD', meta: 'USD/oz' },
 ];
 
-function uniqueStorySymbols(stories: ConsolidatedNewsStory[], limit: number) {
+function uniqueStorySymbols(stories: ConsolidatedNewsStory[], limit = Infinity) {
   const symbols: string[] = [];
   const seen = new Set<string>();
   for (const story of stories) {
@@ -266,7 +266,8 @@ export async function GET(request: NextRequest) {
     let prices = new Map<string, SpecialQuote>();
     if (topic === 'stocks-under-1') {
       stories = await resolveUnderOneSymbols(stories);
-      prices = await fetchSpecialQuotes(uniqueStorySymbols(stories, 18));
+      const symbols = uniqueStorySymbols(stories);
+      prices = await fetchSpecialQuotes(symbols, symbols.length);
       stories = stories.filter(story => story.symbols.some(symbol => verifiedUnderOne(prices.get(symbol.toUpperCase()))));
     }
     const rawItems = stories.map(story => rawUiItem(story, firstUsablePrice(story, prices, topic === 'stocks-under-1'), isIpoTopic(topic)));

@@ -1,4 +1,5 @@
 import 'server-only';
+import { mapWithConcurrency } from '@/lib/server/mapWithConcurrency';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
 
 export type SpecialQuote = TechStockPrice & { name?: string; currency?: string; assetType?: string; exchange?: string };
@@ -64,10 +65,10 @@ async function fetchQuote(symbol: string): Promise<SpecialQuote> {
   return unavailable;
 }
 
-export async function fetchSpecialQuotes(symbols: string[]) {
+export async function fetchSpecialQuotes(symbols: string[], maxSymbols = 18) {
   const unique = [...new Set(symbols.map(symbol => symbol.trim().toUpperCase()))]
-    .filter(symbol => /^[A-Z][A-Z0-9.=^-]{0,14}$/.test(symbol)).slice(0, 18);
-  const quotes = await Promise.all(unique.map(async symbol => {
+    .filter(symbol => /^[A-Z][A-Z0-9.=^-]{0,14}$/.test(symbol)).slice(0, maxSymbols);
+  const quotes = await mapWithConcurrency(unique, 18, async symbol => {
     const saved = cache.get(symbol);
     if (saved && saved.expires > Date.now()) return saved.quote;
     let request = pending.get(symbol);
@@ -80,6 +81,6 @@ export async function fetchSpecialQuotes(symbols: string[]) {
       pending.set(symbol, request);
     }
     return request;
-  }));
+  });
   return new Map(quotes.map(quote => [quote.symbol, quote]));
 }

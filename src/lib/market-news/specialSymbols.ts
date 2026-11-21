@@ -1,4 +1,5 @@
 import 'server-only';
+import { mapWithConcurrency } from '@/lib/server/mapWithConcurrency';
 import type { ConsolidatedNewsStory } from './types';
 
 type SearchQuote = { symbol?: string; shortname?: string; longname?: string; quoteType?: string; exchange?: string };
@@ -68,8 +69,8 @@ export async function resolveUnderOneSymbols(stories: ConsolidatedNewsStory[]) {
     .filter(entry => entry.hint && entry.story.symbols.length === 0 && explicitUsSymbols(entry.story.title).length === 0)
     .sort((a, b) => Number(/deficiency|non.compliance|below|extension|additional/i.test(b.story.title))
       - Number(/deficiency|non.compliance|below|extension|additional/i.test(a.story.title)));
-  const companies = [...new Set(candidates.map(entry => entry.hint!))].slice(0, 12);
-  const resolved = new Map(await Promise.all(companies.map(async company => [company, await resolveCompany(company)] as const)));
+  const companies = [...new Set(candidates.map(entry => entry.hint!))];
+  const resolved = new Map(await mapWithConcurrency(companies, 12, async company => [company, await resolveCompany(company)] as const));
   return stories.map(story => {
     const explicit = explicitUsSymbols(`${story.title} ${story.summary ?? ''}`);
     const hint = companyHint(story.title);
