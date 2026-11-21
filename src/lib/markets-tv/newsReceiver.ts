@@ -93,13 +93,17 @@ export function receiverNewsPayload(value: unknown, channel: TvReceiverNewsChann
     const source = typeof item.source === 'string' ? item.source : item.sourceName;
     const publishedAt = date(item.publishedAt);
     if (!url || typeof title !== 'string' || !title.trim() || typeof source !== 'string' || !source.trim() || !publishedAt || seen.has(url)) return [];
+    const stockSymbol = channel === 'underDollarNews' && item.priceVerified === true
+      && typeof item.price === 'number' && item.price > 0 && item.price < 1
+      && typeof item.ticker === 'string' && /^[A-Z][A-Z0-9.-]{0,14}$/.test(item.ticker) ? item.ticker : undefined;
+    if (channel === 'underDollarNews' && !stockSymbol) return [];
     if (channel === 'shariaNews' && item.shariahStatus !== 'compliant') return [];
     seen.add(url);
     const imageUrl = [item.imageUrl, item.image, item.thumbnail]
       .map(tvNewsPhotoUrl).find(Boolean);
     const status = item.shariahStatus;
     const screening: TvNews['screening'] = channel === 'shariaNews' ? status === 'compliant' || status === 'needs_review' || status === 'non_compliant' ? status : 'unclassified' : undefined;
-    return [{ id: typeof item.id === 'string' ? item.id : url, title, source, publishedAt, url, ...(imageUrl ? { imageUrl } : {}), ...(screening ? { screening } : {}) }];
+    return [{ id: typeof item.id === 'string' ? item.id : url, title, source, publishedAt, url, ...(stockSymbol ? { stockSymbol } : {}), ...(imageUrl ? { imageUrl } : {}), ...(screening ? { screening } : {}) }];
   }).slice(0, 60) : [];
   return { stories, invalid: !valid || body.success === false || body.ok === false,
     partial: body.partialFailure === true, stored: body.storedFallbackUsed === true,

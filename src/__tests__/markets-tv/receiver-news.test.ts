@@ -12,6 +12,13 @@ describe('website news channels on TV', () => {
     expect(receiverNewsPath('underDollarNews','ar')).toBe('/api/market/special-news?topic=stocks-under-1&lang=ar&limit=24');
     expect(receiverNewsPath('shariaNews','fr')).toBe('/api/sharia-stocks/news?lang=fr&limit=24&view=headlines&scope=compliant');
   });
+  it('labels the under-dollar headline with the verified stock rather than every symbol mentioned', () => {
+    const row = { ...story, ticker: 'SMALL', priceVerified: true, price: 0.125, symbols: ['PEER', 'SMALL'] };
+    const items = [{ ...row, price: 1 }, { ...row, price: 0 }, { ...row, priceVerified: false },
+      { ...row, ticker: null }, row, row];
+    const feed = receiverNewsPayload({ topic: 'stocks-under-1', items }, 'underDollarNews');
+    expect(feed.stories).toEqual([{ ...story, stockSymbol: 'SMALL' }]);
+  });
   it('rejects wrong scopes, unsafe or undated items and deduplicates source URLs', () => {
     expect(receiverNewsPayload({ items: [story], topic: 'metals-news' }, 'underDollarNews').invalid).toBe(true);
     expect(receiverNewsPayload({ items: [story], category: 'growth' }, 'shariaNews').stories).toEqual([]);

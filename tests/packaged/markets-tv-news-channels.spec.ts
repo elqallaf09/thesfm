@@ -22,7 +22,7 @@ for (const language of ['ar','en','fr'] as const) test(`all news channels: ${lan
         {...quote,symbol:'REVIEW',canonicalSecurityId:'NYSE:REVIEW',shariahStatus:'needs_review'},
       ]}});
     }
-    const items=Array.from({length:24},(_,index)=>({id:`${url.pathname}-${topic}-${index}`,title:`${topic||category||url.pathname} ${index} · أخبار الشركات المدرجة ونتائج أعمالها المالية وتطورات الأسواق من المصدر الأصلي`,source:'QA source',publishedAt:'2026-11-07T12:00:00Z',url:`https://example.com/${topic||category||'region'}/${index}`,shariahStatus:category === 'sharia' ? 'compliant' : undefined}));
+    const items=Array.from({length:24},(_,index)=>({id:`${url.pathname}-${topic}-${index}`,title:`${topic||category||url.pathname} ${index} · أخبار الشركات المدرجة ونتائج أعمالها المالية وتطورات الأسواق من المصدر الأصلي`,source:'QA source',publishedAt:'2026-11-07T12:00:00Z',url:`https://example.com/${topic||category||'region'}/${index}`,...(topic === 'stocks-under-1' ? { ticker: 'EXMP', price: 0.75, priceVerified: true } : {}),shariahStatus:category === 'sharia' ? 'compliant' : undefined}));
     return route.fulfill({json:{items,topic,category,success:true,lastSuccessfulUpdate:'2026-11-07T13:00:00Z'}});
   });
   await openAndroidTvPackage(page);
