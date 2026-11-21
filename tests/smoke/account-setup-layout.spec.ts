@@ -137,15 +137,15 @@ async function openSetup(page: Page) {
 }
 
 async function installMockUserSession(page: Page) {
-  const hostname = new URL(supabaseUrl).hostname;
-  const projectRef = hostname.split('.')[0];
+  const origin = new URL(supabaseUrl);
+  const projectRef = origin.hostname.split('.')[0];
 
   await page.route('**/api/auth/session', route => route.fulfill({
     status: 200,
     contentType: 'application/json',
     body: JSON.stringify({ ok: true }),
   }));
-  await page.route(`**/${hostname}/**`, route => {
+  await page.route(`${origin.origin}/**`, route => {
     const pathname = new URL(route.request().url()).pathname;
     const body = pathname.endsWith('/auth/v1/user')
       ? { id: 'account-setup-layout-user', role: 'authenticated', user_metadata: {} }

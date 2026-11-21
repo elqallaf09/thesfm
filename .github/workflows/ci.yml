@@ -357,6 +357,25 @@ jobs:
             -subj '/CN=127.0.0.1' \
             -addext 'subjectAltName=IP:127.0.0.1'
           chmod 600 "$RUNNER_TEMP/playwright-tls/key.pem" "$RUNNER_TEMP/playwright-tls/cert.pem"
+      - name: Serve the local Auth and database API over HTTPS for WebKit
+        id: local-api
+        if: github.event_name == 'pull_request'
+        env:
+          PLAYWRIGHT_HTTPS_LOOPBACK: '1'
+          PLAYWRIGHT_TLS_CERT_PATH: ${{ runner.temp }}/playwright-tls/cert.pem
+          PLAYWRIGHT_TLS_KEY_PATH: ${{ runner.temp }}/playwright-tls/key.pem
+          PLAYWRIGHT_SUPABASE_UPSTREAM_URL: ${{ steps.local-auth.outputs.NEXT_PUBLIC_SUPABASE_URL }}
+          LOCAL_ANON_KEY: ${{ steps.local-auth.outputs.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          node scripts/playwright-https-proxy.mjs --supabase-local > "$RUNNER_TEMP/sfm-api-proxy.log" 2>&1 &
+          api_pid=$!
+          api_origin=https://127.0.0.1:3444
+          curl --silent --show-error --fail --retry 10 --retry-connrefused \
+            --cacert "$PLAYWRIGHT_TLS_CERT_PATH" -H "apikey: $LOCAL_ANON_KEY" \
+            "$api_origin/auth/v1/health" > /dev/null
+          kill -0 "$api_pid"
+          echo "origin=$api_origin" >> "$GITHUB_OUTPUT"
+          echo "NODE_EXTRA_CA_CERTS=$PLAYWRIGHT_TLS_CERT_PATH" >> "$GITHUB_ENV"
       - name: Verify WebKit Secure-cookie transport
         env:
           PLAYWRIGHT_TLS_CERT_PATH: ${{ runner.temp }}/playwright-tls/cert.pem
@@ -364,7 +383,7 @@ jobs:
         run: node scripts/verify-playwright-https-cookie.mjs
       - run: pnpm build
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ steps.local-auth.outputs.NEXT_PUBLIC_SUPABASE_URL || (github.event_name == 'push' && (secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL)) || '' }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ steps.local-api.outputs.origin || (github.event_name == 'push' && (secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL)) || '' }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ steps.local-auth.outputs.NEXT_PUBLIC_SUPABASE_ANON_KEY || (github.event_name == 'push' && (secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY)) || '' }}
           NEXT_PUBLIC_SITE_URL: https://www.the-sfm.com
       - run: pnpm test:smoke
@@ -379,7 +398,7 @@ jobs:
           SFM_LOCAL_DASHBOARD_QA: '1'
           PLAYWRIGHT_TLS_CERT_PATH: ${{ runner.temp }}/playwright-tls/cert.pem
           PLAYWRIGHT_TLS_KEY_PATH: ${{ runner.temp }}/playwright-tls/key.pem
-          NEXT_PUBLIC_SUPABASE_URL: ${{ steps.local-auth.outputs.NEXT_PUBLIC_SUPABASE_URL || (github.event_name == 'push' && (secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL)) || '' }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ steps.local-api.outputs.origin || (github.event_name == 'push' && (secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL)) || '' }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ steps.local-auth.outputs.NEXT_PUBLIC_SUPABASE_ANON_KEY || (github.event_name == 'push' && (secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY)) || '' }}
           NEXT_PUBLIC_SITE_URL: https://www.the-sfm.com
           # Server-only secrets: consumed by the app server the smoke run
@@ -397,7 +416,7 @@ jobs:
           PLAYWRIGHT_HTTPS_LOOPBACK: '1'
           PLAYWRIGHT_TLS_CERT_PATH: ${{ runner.temp }}/playwright-tls/cert.pem
           PLAYWRIGHT_TLS_KEY_PATH: ${{ runner.temp }}/playwright-tls/key.pem
-          NEXT_PUBLIC_SUPABASE_URL: ${{ steps.local-auth.outputs.NEXT_PUBLIC_SUPABASE_URL || (github.event_name == 'push' && (secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL)) || '' }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ steps.local-api.outputs.origin || (github.event_name == 'push' && (secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL)) || '' }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ steps.local-auth.outputs.NEXT_PUBLIC_SUPABASE_ANON_KEY || (github.event_name == 'push' && (secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY)) || '' }}
           NEXT_PUBLIC_SITE_URL: https://www.the-sfm.com
           SUPABASE_SERVICE_ROLE_KEY: ${{ steps.local-auth.outputs.SUPABASE_SERVICE_ROLE_KEY || (github.event_name == 'push' && (secrets.SUPABASE_SERVICE_ROLE_KEY)) || '' }}

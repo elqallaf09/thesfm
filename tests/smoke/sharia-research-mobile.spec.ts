@@ -130,8 +130,10 @@ test.describe('Arabic Sharia screening and documented research page', () => {
     await publication.close();
     expect(requests).toBe(0);
 
-    await page.locator('[data-deferred-stock-scanner="sharia"]').evaluate(element => element.scrollIntoView());
-    await expect(page.locator('section[data-category="sharia"] input[type="search"]')).toBeVisible();
+    await page.bringToFront();
+    const search = page.locator('section[data-category="sharia"] input[type="search"]');
+    await search.scrollIntoViewIfNeeded();
+    await expect(search).toBeInViewport();
     await expect.poll(() => requests).toBe(1);
   });
 
