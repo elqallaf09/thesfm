@@ -3,7 +3,7 @@ import { expect, type Page } from '@playwright/test';
 const destinations = ['hall', 'allStocks', 'strips', 'world', 'kuwait', 'gulf', 'assets', 'crypto', 'news', 'sessions', 'watchlist', 'investments', 'brief', 'map'];
 export const TV_MENU_KEYS = [
   'menu-close', ...destinations.map(key => `menu:${key}`),
-  'customize', 'settings', 'switch-account', 'pair', 'more',
+  'customize', 'settings', 'my-account', 'switch-account', 'pair', 'more',
 ];
 
 /** Check the clipped viewport of the scrollable list, not only the document viewport. */

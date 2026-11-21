@@ -4,6 +4,10 @@ import { mkdir, copyFile, readFile, writeFile, cp, readdir, rm } from 'node:fs/p
 const root = process.cwd();
 const origin = new URL(process.env.SFM_TV_ORIGIN || 'https://www.the-sfm.com');
 if (origin.protocol !== 'https:' || origin.username || origin.password || origin.pathname !== '/' || origin.search || origin.hash) throw new Error('SFM_TV_ORIGIN must be an HTTPS origin');
+const androidSource = await readFile(resolve(root, 'apps/markets-tv/android/app/build.gradle'), 'utf8');
+const androidVersion = /versionName '([0-9.]+)'/.exec(androidSource)?.[1];
+const androidCode = Number(/versionCode ([0-9]+)/.exec(androidSource)?.[1]);
+if (!androidVersion || !Number.isSafeInteger(androidCode) || androidCode < 1) throw new Error('Android TV build identity is missing');
 const out = resolve(root, '.tv-build/web');
 await build({ configFile: false, root: resolve(root, 'apps/markets-tv/web'), base: './',
   resolve: { alias: { '@': resolve(root, 'src') } },
@@ -41,6 +45,10 @@ for (const platform of ['tizen','webos']) {
     const file=resolve(target,'config.xml'); await writeFile(file,(await readFile(file,'utf8')).replaceAll('https://www.the-sfm.com',origin.origin));
   }
 }
-await rm(resolve(root, 'apps/markets-tv/android/app/src/main/assets'), { recursive: true, force: true });
-await cp(out, resolve(root, 'apps/markets-tv/android/app/src/main/assets'), { recursive: true, force: true });
+const androidAssets = resolve(root, 'apps/markets-tv/android/app/src/main/assets');
+await rm(androidAssets, { recursive: true, force: true });
+await cp(out, androidAssets, { recursive: true, force: true });
+// Only Android advertises this identity; other packaged platforms have their own versions.
+await writeFile(resolve(androidAssets, 'configuration.js'), await readFile(resolve(out, 'configuration.js'), 'utf8')
+  + `window.SFM_TV_ANDROID_BUILD = ${JSON.stringify({ version: androidVersion, code: androidCode })};\n`);
 console.log('Packaged web clients prepared in .tv-build; Android assets prepared. Vendor signing is separate.');

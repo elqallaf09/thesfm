@@ -1,5 +1,5 @@
 import type { TvGroup, TvLanguage, TvQuote, TvScene } from './types';
-import { isTvExternalIndex } from './indexChart';
+import { isTvExternalIndex } from './indexIdentity';
 
 export const TV_SCENE_ORDER: TvScene[] = ['overview', 'gulf', 'world', 'assets', 'crypto', 'watchlist'];
 const SCENE_GROUP: Record<TvScene, TvGroup> = {

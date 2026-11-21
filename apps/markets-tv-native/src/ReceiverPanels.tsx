@@ -5,10 +5,11 @@ import { sessionTimeline, durationClock } from '../../../src/lib/markets-tv/sess
 import { receiverText } from '../../../src/lib/markets-tv/receiver';
 import { portfolioText } from '../../../src/lib/markets-tv/portfolioCopy';
 import type { TvReceiverNewsChannel } from '../../../src/lib/markets-tv/newsReceiver';
+import type { TvAtlasRegion } from '../../../src/lib/markets-tv/atlas';
 import { currentStatus, formatQuotePrice, hasPrice } from './api';
 import { quoteLabel, t } from './copy';
 import { Label, Panel, usePresentation, kuwaitDate, money } from './presentation';
-import { readCatalog, readDirectory, readNews, parsePortfolio, portfolioDisplayValue, request, directoryLocation } from './receiverApi';
+import { readCatalog, readDirectory, readNews, parsePortfolio, portfolioDisplayValue, request, directoryLocation, selectDirectoryMarkets } from './receiverApi';
 import { useResource } from './useResource';
 import { portfolioStatusLabel, r } from './receiverCopy';
 import { TvButton } from './TvControls';
@@ -92,13 +93,14 @@ export function SessionsPanel({ page, changePage }: { page: number; changePage: 
     })}</View><Pages page={current} pages={pages} change={changePage}/>
   </View>;
 }
-export function StocksPanel({ kuwait, page, changePage, revision }: { kuwait: boolean; page: number; changePage: (page: number) => void; revision: number }) {
+export function StocksPanel({ kuwait, region, page, changePage, revision }: { kuwait: boolean; region?: TvAtlasRegion; page: number; changePage: (page: number) => void; revision: number }) {
   const { language, row } = usePresentation();
   const catalog = useResource('catalog', readCatalog, 3600_000);
-  const markets = catalog.data?.filter(m => !kuwait || m.id === 'BOURSA_KUWAIT') || [];
+  const markets = selectDirectoryMarkets(catalog.data || [], kuwait, region);
   const location = directoryLocation(markets, page), { market, page: marketPage } = location;
   const load = useCallback((signal: AbortSignal) => market ? readDirectory(market, marketPage, signal) : Promise.reject(new Error('NO_MARKET')), [market, marketPage]);
-  const result = useResource(`${market?.id}:${marketPage}:${revision}`, load, 30_000, Boolean(market));
+  const scope = kuwait ? 'kuwait' : region || 'all';
+  const result = useResource(`${scope}:${market?.group}:${market?.id}:${marketPage}:${revision}`, load, 30_000, Boolean(market));
   return <View style={s.fill}><Status loading={catalog.loading || result.loading} error={catalog.error || result.error}/>
     <View style={[s.row, row]}><Label large>{market ? language === 'ar' ? market.labelAr : language === 'fr' ? market.labelFr : market.labelEn : t(language, 'noData')}</Label>
       {!kuwait && <TvButton onPress={() => changePage((location.start + location.pages) % location.total)}>{r(language, 'market')}</TvButton>}</View>
