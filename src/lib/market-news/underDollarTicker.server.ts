@@ -37,7 +37,7 @@ export async function underDollarTicker() {
         { left: 'close', operation: 'less', right: 1 },
       ], columns, sort: { sortBy: 'volume', sortOrder: 'desc' }, range: [0, 24],
     }),
-    next: { revalidate: 60 }, signal: AbortSignal.timeout(3500),
+    next: { revalidate: 60 }, signal: AbortSignal.timeout(12_000),
   });
   if (!response.ok) throw new Error('Under-dollar screener unavailable');
   return underDollarQuotes(await response.json());
