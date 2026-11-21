@@ -5,13 +5,16 @@ import { sessionTimeline, durationClock } from '../../../src/lib/markets-tv/sess
 import { receiverText } from '../../../src/lib/markets-tv/receiver';
 import { portfolioText } from '../../../src/lib/markets-tv/portfolioCopy';
 import type { TvReceiverNewsChannel } from '../../../src/lib/markets-tv/newsReceiver';
+import type { TvAtlasRegion } from '../../../src/lib/markets-tv/atlas';
 import { currentStatus, formatQuotePrice, hasPrice } from './api';
 import { quoteLabel, t } from './copy';
 import { Label, Panel, usePresentation, kuwaitDate, money } from './presentation';
-import { readCatalog, readDirectory, readNews, parsePortfolio, portfolioDisplayValue, request, directoryLocation } from './receiverApi';
+import { readCatalog, readDirectory, readNews, parsePortfolio, portfolioDisplayValue, request, directoryLocation, selectDirectoryMarkets } from './receiverApi';
 import { useResource } from './useResource';
 import { portfolioStatusLabel, r } from './receiverCopy';
 import { TvButton } from './TvControls';
+import { GLOBAL_INDEX_TICKER, channelTickerPath } from '../../../src/lib/markets-tv/channelTicker';
+import { NativeTicker } from './NativeTicker';
 import { NewsPhoto } from './NewsPhoto';
 
 export function Pages({ page, pages, change }: { page: number; pages: number; change: (page: number) => void }) {
@@ -41,6 +44,7 @@ export function NewsPanel({ channel, page, changePage, revision }: { channel: Tv
     </Panel>)}</View>
     {data && !data.stories.length && <Label>{t(language, 'noData')}</Label>}
     <Pages page={current} pages={pages} change={changePage}/>
+    <NativeTicker path={channel === 'kuwait' ? '/api/tv/snapshot?group=gulf&market=BOURSA_KUWAIT&pageSize=6' : data?.tickerPath ?? channelTickerPath(channel, null)} revision={revision}/>
   </View>;
 }
 export function PortfolioPanel({ token, page, changePage, revision, revoked }: { token: string | null; page: number; changePage: (page: number) => void; revision: number; revoked: () => Promise<void> }) {
@@ -73,6 +77,7 @@ export function PortfolioPanel({ token, page, changePage, revision, revoked }: {
         })}
       </TVTextScrollView>
       {!data.positions.length && <Label>{t(language, 'noData')}</Label>}
+      <NativeTicker quotes={data.positions.flatMap(p => p.marketQuote ? [p.marketQuote] : [])}/>
       <Label muted>{`${r(language, 'sync')}: ${kuwaitDate(data.generatedAt)}`}</Label></>}
     <Pages page={current} pages={pages} change={changePage}/>
   </View>;
@@ -89,19 +94,20 @@ export function SessionsPanel({ page, changePage }: { page: number; changePage: 
         <Label>{`${session.region} · ${session.names[language === 'ar' ? 0 : language === 'fr' ? 2 : 1]}`}</Label>
         <Label muted>{r(language, timeline.open ? 'open' : 'closed')}</Label><Label large>{durationClock(timeline.remaining)}</Label>
       </View>;
-    })}</View><Pages page={current} pages={pages} change={changePage}/>
+    })}</View><Pages page={current} pages={pages} change={changePage}/><NativeTicker path={GLOBAL_INDEX_TICKER}/>
   </View>;
 }
-export function StocksPanel({ kuwait, page, changePage, revision }: { kuwait: boolean; page: number; changePage: (page: number) => void; revision: number }) {
+export function StocksPanel({ kuwait, forex = false, region, page, changePage, revision }: { kuwait: boolean; forex?: boolean; region?: TvAtlasRegion; page: number; changePage: (page: number) => void; revision: number }) {
   const { language, row } = usePresentation();
   const catalog = useResource('catalog', readCatalog, 3600_000);
-  const markets = catalog.data?.filter(m => !kuwait || m.id === 'BOURSA_KUWAIT') || [];
+  const markets = forex ? (catalog.data || []).filter(market => market.group === 'forex') : selectDirectoryMarkets(catalog.data || [], kuwait, region);
   const location = directoryLocation(markets, page), { market, page: marketPage } = location;
   const load = useCallback((signal: AbortSignal) => market ? readDirectory(market, marketPage, signal) : Promise.reject(new Error('NO_MARKET')), [market, marketPage]);
-  const result = useResource(`${market?.id}:${marketPage}:${revision}`, load, 30_000, Boolean(market));
+  const scope = kuwait ? 'kuwait' : region || 'all';
+  const result = useResource(`${scope}:${market?.group}:${market?.id}:${marketPage}:${revision}`, load, 30_000, Boolean(market));
   return <View style={s.fill}><Status loading={catalog.loading || result.loading} error={catalog.error || result.error}/>
     <View style={[s.row, row]}><Label large>{market ? language === 'ar' ? market.labelAr : language === 'fr' ? market.labelFr : market.labelEn : t(language, 'noData')}</Label>
-      {!kuwait && <TvButton onPress={() => changePage((location.start + location.pages) % location.total)}>{r(language, 'market')}</TvButton>}</View>
+      {!kuwait && !forex && <TvButton onPress={() => changePage((location.start + location.pages) % location.total)}>{r(language, 'market')}</TvButton>}</View>
     <View style={[s.grid, row]}>{result.data?.quotes.map(quote => <View key={`${quote.exchange}:${quote.symbol}`} style={s.third}><Panel>
       <Label>{language === 'ar' ? quote.nameAr : quote.name}</Label><Label muted>{quote.symbol}</Label>
       <Label large>{`${formatQuotePrice(quote)} ${quote.currency || ''}`}</Label>
@@ -110,8 +116,10 @@ export function StocksPanel({ kuwait, page, changePage, revision }: { kuwait: bo
       <Label muted>{kuwaitDate(quote.observedAt)}</Label>
     </Panel></View>)}</View>
     <Pages page={marketPage} pages={result.data?.pages || location.pages} change={value => changePage(location.start + value)}/>
+    <NativeTicker quotes={result.data?.quotes}/>
   </View>;
 }
 const s = StyleSheet.create({ fill: { flex: 1, gap: 14 }, row: { alignItems: 'center', gap: 24 }, grid: { flex: 1, gap: 18, flexWrap: 'wrap', alignContent: 'flex-start' },
   portfolioScroll: { flex: 1, minHeight: 0, borderWidth: 2, borderRadius: 18 }, portfolioGrid: { gap: 18, flexWrap: 'wrap', alignContent: 'flex-start', alignItems: 'flex-start' },
   half: { width: '49%' }, third: { width: '32.5%' }, session: { width: '32.5%', borderRadius: 16, borderWidth: 1, padding: 18, gap: 8 }, stories: { flex: 1, gap: 18 }, storyText: { flex: 1, gap: 12 } });
+

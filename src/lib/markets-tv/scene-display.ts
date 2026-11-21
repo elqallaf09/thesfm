@@ -1,9 +1,9 @@
 import type { TvGroup, TvLanguage, TvQuote, TvScene } from './types';
-import { isTvExternalIndex } from './indexChart';
+import { isTvExternalIndex } from './indexIdentity';
 
-export const TV_SCENE_ORDER: TvScene[] = ['overview', 'gulf', 'world', 'assets', 'watchlist'];
+export const TV_SCENE_ORDER: TvScene[] = ['overview', 'gulf', 'world', 'assets', 'crypto', 'watchlist'];
 const SCENE_GROUP: Record<TvScene, TvGroup> = {
-  overview: 'global', gulf: 'gulf', world: 'world', assets: 'commodities', watchlist: 'watchlist',
+  overview: 'global', gulf: 'gulf', world: 'world', assets: 'commodities', crypto: 'crypto', watchlist: 'watchlist',
 };
 
 /** One bounded snapshot supplies the summaries, main list and ticker together. */
@@ -15,9 +15,10 @@ export const TV_SCENE_TEXT = {
   sceneMoves: ['تحركات المشهد', 'Scene movers', 'Variations de la sélection'],
   selectedMoves: ['من الأدوات المعروضة فقط', 'Among displayed instruments only', 'Parmi les instruments affichés uniquement'],
   overview: ['نظرة عامة', 'Overview', 'Vue d’ensemble'],
-  gulf: ['الكويت والخليج', 'Kuwait & Gulf', 'Koweït et Golfe'],
+  gulf: ['أسواق الخليج', 'Gulf markets', 'Marchés du Golfe'],
   world: ['العالم', 'World', 'Monde'],
   assets: ['عملات وسلع', 'Currencies & commodities', 'Devises et matières premières'],
+  crypto: ['العملات الرقمية', 'Cryptocurrencies', 'Cryptomonnaies'],
   watchlist: ['قائمتي', 'My watchlist', 'Ma liste'],
   viewing: ['وضع المشاهدة', 'Viewing mode', 'Mode télévision'],
   browse: ['تصفح كل الأسواق', 'Browse all markets', 'Parcourir les marchés'],

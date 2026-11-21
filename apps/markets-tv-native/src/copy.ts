@@ -1,7 +1,8 @@
 import type { Language } from './api';
 const copy = {
-  overview: ['نظرة عامة', 'Overview', 'Vue d’ensemble'], gulf: ['الكويت والخليج', 'Kuwait & Gulf', 'Koweït et Golfe'],
+  overview: ['نظرة عامة', 'Overview', 'Vue d’ensemble'], gulf: ['أسواق الخليج', 'Gulf markets', 'Marchés du Golfe'],
   world: ['العالم', 'World', 'Monde'], assets: ['عملات وسلع', 'Currencies & commodities', 'Devises et matières premières'],
+  crypto: ['العملات الرقمية', 'Cryptocurrencies', 'Cryptomonnaies'],
   brief: ['موجز العينة', 'Sample brief', 'Résumé de l’échantillon'], refresh: ['تحديث', 'Refresh', 'Actualiser'],
   loading: ['جارٍ تحميل الأسعار', 'Loading quotes', 'Chargement des cours'], error: ['تعذر التحديث؛ أعد المحاولة', 'Update failed; please retry', 'Échec de l’actualisation ; réessayez'],
   noPrice: ['السعر غير متاح', 'Price unavailable', 'Cours indisponible'], noData: ['لا توجد بيانات متاحة', 'No data available', 'Aucune donnée disponible'],

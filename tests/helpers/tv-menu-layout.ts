@@ -1,11 +1,9 @@
 import { expect, type Page } from '@playwright/test';
-import { TV_RECEIVER_CHANNELS } from '../../src/lib/markets-tv/receiver';
 
-const destinations = ['hall', 'allStocks', 'strips', 'world', 'gulf', 'assets', 'kuwait', 'news', 'sessions', 'watchlist', 'investments', 'brief', 'map'];
+const destinations = ['hall', 'allStocks', 'strips', 'world', 'kuwait', 'gulf', 'assets', 'crypto', 'forex', 'news', 'sessions', 'watchlist', 'investments', 'brief', 'map'];
 export const TV_MENU_KEYS = [
   'menu-close', ...destinations.map(key => `menu:${key}`),
-  ...TV_RECEIVER_CHANNELS.filter(channel => !['allStocks', 'kuwait', 'sessions', 'investments'].includes(channel)).map(channel => `broadcast:${channel}`),
-  'customize', 'settings', 'switch-account', 'pair', 'more',
+  'customize', 'settings', 'my-account', 'switch-account', 'pair', 'more',
 ];
 
 /** Check the clipped viewport of the scrollable list, not only the document viewport. */
@@ -74,3 +72,4 @@ export async function focusTvMenuAction(page: Page, key: string) {
   }
   await expectTvMenuActionFits(page, key);
 }
+

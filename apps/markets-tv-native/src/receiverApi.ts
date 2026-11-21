@@ -1,6 +1,8 @@
+import { CATEGORY_TICKERS, channelTickerPath, channelTickerQuotes } from '../../../src/lib/markets-tv/channelTicker';
 import { ORIGIN, parseQuote, type Quote } from './api';
 import { receiverNewsPath, receiverNewsPayload, type TvReceiverNewsChannel } from '../../../src/lib/markets-tv/newsReceiver';
 import type { TvPortfolioPosition } from '../../../src/lib/markets-tv/portfolio';
+import type { TvAtlasRegion } from '../../../src/lib/markets-tv/atlas';
 
 export const record = (v: unknown): Record<string, unknown> => v && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, unknown> : {};
 export const text = (v: unknown) => typeof v === 'string' && v.trim() ? v : null;
@@ -28,6 +30,26 @@ export async function request(path: string, signal: AbortSignal, token?: string,
   }
   return response.json();
 }
+/** Native quote presentation requires a dated observation. Some sector feeds only
+ * identify the priced listings. Resolve those public US symbols through TV. */
+export async function readTicker(path: string, signal: AbortSignal) {
+  const rows = channelTickerQuotes(path, await request(path, signal));
+  const dated = rows.flatMap(row => { const q = parseQuote(row); return q?.price != null ? [q] : []; });
+  if (dated.length || !Object.values(CATEGORY_TICKERS).some(value => value === path)) return dated;
+  const selected = rows.filter(row => row.currency === 'USD').slice(0, 12);
+  if (!selected.length) return [];
+  const symbols = selected.map(row => row.symbol);
+  const query = '/api/tv/snapshot?group=us&market=US&pageSize=12&symbols=' + encodeURIComponent(JSON.stringify(symbols));
+  const snapshot = record(await request(query, signal));
+  if (snapshot.group !== 'us' || snapshot.market !== 'US' || !Array.isArray(snapshot.quotes)) return [];
+  return snapshot.quotes.flatMap(value => {
+    const q = parseQuote(value);
+    const match = selected.find(row => row.symbol === q?.symbol && row.currency === q?.currency);
+    if (!q || !match || (match.exchange && match.exchange !== q.exchange)) return [];
+    return [q];
+  });
+}
+
 export type Pair = { code: string; secret: string; expiresAt: string };
 export function parsePair(value: unknown, now = Date.now()): Pair {
   const row = record(value), expiry = Date.parse(String(row.expiresAt));
@@ -36,6 +58,10 @@ export function parsePair(value: unknown, now = Date.now()): Pair {
   return { code: row.code, secret: row.secret, expiresAt: String(row.expiresAt) };
 }
 export type Market = { id: string; group: string; labelAr: string; labelEn: string; labelFr: string; count: number };
+/** The API catalog owns region membership; the Kuwait channel keeps its exact exchange. */
+export function selectDirectoryMarkets(markets: readonly Market[], kuwait: boolean, region?: TvAtlasRegion): Market[] {
+  return markets.filter(market => kuwait ? market.id === 'BOURSA_KUWAIT' : region === undefined || market.group === region);
+}
 export async function readCatalog(signal: AbortSignal): Promise<Market[]> {
   const body = record(await request('/api/tv/catalog', signal));
   if (!Array.isArray(body.markets)) throw new Error('INVALID_CATALOG');
@@ -61,11 +87,13 @@ export async function readDirectory(market: Market, page: number, signal: AbortS
     pages: Math.max(1, Math.ceil((numeric(body.directoryTotal) || 0) / NATIVE_QUOTES_PER_PAGE)), generatedAt: text(body.generatedAt) };
 }
 export async function readNews(channel: TvReceiverNewsChannel, language: 'ar' | 'en' | 'fr', signal: AbortSignal) {
-  const data = receiverNewsPayload(await request(receiverNewsPath(channel, language), signal), channel);
+  const body = await request(receiverNewsPath(channel, language), signal);
+  const data = receiverNewsPayload(body, channel);
   if (data.invalid) throw new Error('INVALID_NEWS');
-  return data;
+  return { ...data, tickerPath: channelTickerPath(channel, body) };
 }
 export type Position = Pick<TvPortfolioPosition, 'id' | 'name' | 'symbol' | 'source' | 'valuedAt' | 'freshness'> & {
+  marketQuote?: Quote;
   amount: number | null; currency: string | null; baseValue: number | null;
   valuationKind: NonNullable<TvPortfolioPosition['valuationKind']>;
   quoteStatus: NonNullable<TvPortfolioPosition['quoteStatus']> | null;
@@ -86,7 +114,8 @@ export function parsePortfolio(value: unknown): Portfolio {
   const positions: Position[] = row.positions.map(value => {
     const item = record(value), valuation = record(item.value);
     if (!text(item.id) || !text(item.name)) throw new Error('INVALID_POSITION');
-    return { id: String(item.id), name: String(item.name), symbol: text(item.symbol), amount: numeric(valuation.amount), currency: text(valuation.currency),
+    const marketQuote = item.valuationKind === 'market' ? parseQuote(item.marketQuote) : null;
+    return { ...(marketQuote ? { marketQuote } : {}), id: String(item.id), name: String(item.name), symbol: text(item.symbol), amount: numeric(valuation.amount), currency: text(valuation.currency),
       baseValue: numeric(item.baseValue), source: text(item.source), valuedAt: text(item.valuedAt),
       freshness: member(item.freshness, ['recorded', 'stale', 'missing']) || 'missing',
       valuationKind: member(item.valuationKind, ['market', 'recorded', 'manual']) || 'recorded',
@@ -96,3 +125,4 @@ export function parsePortfolio(value: unknown): Portfolio {
   return { currency: String(row.currency), totalValue: numeric(row.totalValue), valueCoverage: numeric(row.valueCoverage) || 0,
     total: numeric(row.total) ?? positions.length, generatedAt: String(row.generatedAt), positions };
 }
+

@@ -1,5 +1,5 @@
 import type { TvQuote, TvSnapshot } from './types';
-import { quoteStatus } from './quotes';
+import { quoteStatus } from './quote-status';
 import { tvSceneHasPrice } from './scene-display';
 
 export function tvSceneQuoteKey(quote: TvQuote) {

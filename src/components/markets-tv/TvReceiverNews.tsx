@@ -2,6 +2,8 @@
 import { useEffect, useMemo } from 'react';
 import type { TvLanguage, TvNews } from '@/lib/markets-tv/types';
 import { receiverNewsPath, receiverNewsPayload, TV_EXTRA_NEWS_CHANNELS, type TvReceiverNewsChannel } from '@/lib/markets-tv/newsReceiver';
+import { channelTickerPath } from '@/lib/markets-tv/channelTicker';
+import { TvPageTicker } from './TvPageTicker';
 import { receiverText } from '@/lib/markets-tv/receiver';
 import { tvQuoteTime, tvText } from '@/lib/markets-tv/i18n';
 import { useTvResource } from './useTvResource';
@@ -20,7 +22,7 @@ export function TvReceiverNews({ language, channel, now, revision, onStory, onRe
   useEffect(() => { if (!feed.stories.length) onPaginationAvailable?.(false); }, [feed.stories.length, onPaginationAvailable]);
   useEffect(()=>{
     if(!news.data||news.error)return;
-    const order:TvReceiverNewsChannel[]=['technology','kuwait',...TV_EXTRA_NEWS_CHANNELS];
+    const order:TvReceiverNewsChannel[]=['news','technology','kuwait',...TV_EXTRA_NEWS_CHANNELS];
     const next=order[(order.indexOf(channel)+1)%order.length];
     const controller=new AbortController();
     const timer=setTimeout(()=>{
@@ -30,14 +32,16 @@ export function TvReceiverNews({ language, channel, now, revision, onStory, onRe
     return()=>{clearTimeout(timer);controller.abort();};
   },[channel,language,news.data,news.error]);
   return <aside className="tv-receiver-news" aria-busy={news.loading}>
-    {news.loading && !news.data ? <p role="status">{tvText(language, 'loading')}</p> : <>
+    {news.loading && !news.data ? <TvNewsStatus language={language} loading/> : <>
       {(news.error || feed.invalid) && feed.stories.length > 0 && <p role="status">{tvText(language, 'error')} <button onClick={onRefresh}>{tvText(language, 'retry')}</button></p>}
       <p className="tv-receiver-notice">
         {tvText(language, 'available')}: {feed.updatedAt ? <time dateTime={feed.updatedAt}>{tvQuoteTime(feed.updatedAt, language, now)}</time> : '—'}
         {feed.partial && ` · ${receiverText(language, 'partial')}`}{feed.stored && ` · ${receiverText(language, 'stored')}`}
       </p>
-      {!feed.stories.length && (news.error || feed.invalid) ? <div className="tv-headline-items"><TvNewsStatus language={language} error={news.error || 'INVALID_FEED'} onRetry={onRefresh}/></div>
+      {!feed.stories.length && (news.error || feed.invalid) ? <TvNewsStatus language={language} error={news.error || 'INVALID_FEED'} onRetry={onRefresh}/>
         : channel === 'kuwait' ? <TvHeadlines news={feed.stories} language={language} now={now} onStory={onStory} playing={playing}/> : <TvNewsDesk key={`${channel}:${language}`} news={feed.stories} language={language} now={now} onStory={onStory} playing={playing} onPaginationAvailable={onPaginationAvailable}/>}
     </>}
+    {channel !== 'kuwait' && <TvPageTicker path={channelTickerPath(channel, news.data)} loading={news.loading}/>}
   </aside>;
 }
+

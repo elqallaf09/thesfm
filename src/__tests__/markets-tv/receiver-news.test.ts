@@ -5,26 +5,29 @@ import { tvPackagedOrigin } from '@/lib/markets-tv/cors';
 const story = { id: 'one', title: 'Source headline', source: 'Source', publishedAt: '2026-11-07T11:00:00Z', url: 'https://example.com/one' };
 describe('website news channels on TV', () => {
   it('preserves the original five numbers and exposes every added channel in three languages', () => {
-    expect(TV_RECEIVER_CHANNELS).toHaveLength(31);
+    expect(TV_RECEIVER_CHANNELS).toHaveLength(33);
     expect(TV_RECEIVER_CHANNELS.slice(0,5)).toEqual(['allStocks','technology','kuwait','sessions','investments']);
     expect(new Set(Object.values(TV_NEWS_FEEDS)).size).toBe(26);
     for (const channel of TV_RECEIVER_CHANNELS) for (const language of ['ar','en','fr'] as const) expect(receiverText(language,channel)).toBeTruthy();
     expect(receiverNewsPath('underDollarNews','ar')).toBe('/api/market/special-news?topic=stocks-under-1&lang=ar&limit=24');
-    expect(receiverNewsPath('shariaNews','fr')).toBe('/api/sharia-stocks/news?lang=fr&limit=24&view=headlines');
+    expect(receiverNewsPath('shariaNews','fr')).toBe('/api/sharia-stocks/news?lang=fr&limit=24&view=headlines&scope=compliant');
   });
   it('rejects wrong scopes, unsafe or undated items and deduplicates source URLs', () => {
     expect(receiverNewsPayload({ items: [story], topic: 'metals-news' }, 'underDollarNews').invalid).toBe(true);
     expect(receiverNewsPayload({ items: [story], category: 'growth' }, 'shariaNews').stories).toEqual([]);
+    expect(receiverNewsPath('news', 'ar')).toBe('/api/tv/news?language=ar');
+    expect(receiverNewsPayload({ channel: 'all', stories: [story] }, 'news').stories).toEqual([story]);
+    expect(receiverNewsPayload({ channel: 'technology', stories: [story] }, 'news').invalid).toBe(true);
     expect(receiverNewsPayload({ stories: [story] }, 'technology').stories).toEqual([]);
     const feed=receiverNewsPayload({ items: [story,story,{...story,url:'javascript:alert(1)'},{...story,url:'https://example.com/two',publishedAt:'bad'}] },'europeNews');
     expect(feed.stories).toEqual([story]);
     expect(feed.updatedAt).toBeNull();
   });
-  it('retains source screening status and labels unknown results instead of assuming compliance', () => {
-    for (const screening of ['compliant','needs_review','non_compliant','unclassified'] as const) {
-      expect(receiverNewsPayload({ category: 'sharia', items: [{ ...story, shariahStatus: screening }] }, 'shariaNews').stories[0].screening).toBe(screening);
+  it('only airs stories with a compliant source screening decision', () => {
+    for (const status of ['needs_review', 'non_compliant', 'unclassified', undefined]) {
+      expect(receiverNewsPayload({ category: 'sharia', items: [{ ...story, shariahStatus: status }] }, 'shariaNews').stories).toEqual([]);
     }
-    expect(receiverNewsPayload({ category:'sharia', items:[story] },'shariaNews').stories[0].screening).toBe('unclassified');
+    expect(receiverNewsPayload({ category: 'sharia', items: [{ ...story, shariahStatus: 'compliant' }] }, 'shariaNews').stories[0].screening).toBe('compliant');
     expect(receiverNewsPayload({ items:[story], partialFailure:true, storedFallbackUsed:true, lastSuccessfulUpdate:story.publishedAt },'europeNews')).toMatchObject({partial:true,stored:true,updatedAt:story.publishedAt});
     expect(receiverNewsPayload({ success:false,items:[] },'europeNews').invalid).toBe(true);
   });
@@ -54,3 +57,4 @@ describe('website news channels on TV', () => {
     expect(tvPackagedOrigin(new Request('https://www.the-sfm.com/api/europe-news',{headers:{origin:'https://foreign.example'}}))).toBe(false);
   });
 });
+

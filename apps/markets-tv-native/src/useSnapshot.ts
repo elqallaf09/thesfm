@@ -16,7 +16,7 @@ export function useSnapshot(scene: Scene, revision: number) {
       busy = true;
       const request = new AbortController(); controller = request;
       const timeout = setTimeout(() => request.abort(), 14_000);
-      let delay = scene === 'assets' ? 15_000 : 30_000;
+      let delay = scene === 'assets' || scene === 'crypto' ? 15_000 : 30_000;
       try {
         const data = await readSnapshot(scene, request.signal);
         failures = 0; cache.current.set(scene, data);

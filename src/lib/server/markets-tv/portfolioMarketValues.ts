@@ -110,7 +110,7 @@ function marketPosition(original: TvPortfolioPosition, target: PortfolioMarketTa
   const amount = quote.price * target.multiplier;
   if (!Number.isFinite(amount) || amount <= 0) return failed;
   return {
-    ...original, value: { amount, currency: quote.currency! }, baseValue: null, valuationKind: 'market', quoteStatus: state,
+    ...original, value: { amount, currency: quote.currency! }, baseValue: null, valuationKind: 'market', quoteStatus: state, marketQuote: quote,
     source: quote.source, valuedAt: quote.observedAt, freshness: 'recorded',
     recordedValue: original.value, recordedBaseValue: original.baseValue, recordedValuedAt: original.valuedAt, recordedSource: original.source,
   };

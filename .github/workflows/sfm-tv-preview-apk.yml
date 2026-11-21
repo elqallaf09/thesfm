@@ -83,9 +83,9 @@ jobs:
         run: pnpm build:tv
       # Browser tests and release compilation retain their own workflow gates.
       # This debug artifact can be produced while those longer checks are pending.
-      - name: Build installable preview APK
+      - name: Verify account handoff policy and build installable preview APK
         working-directory: apps/markets-tv/android
-        run: gradle --no-daemon :app:assemblePreviewDebug
+        run: gradle --no-daemon :app:testPreviewDebugUnitTest :app:assemblePreviewDebug
       - name: Verify APK exists and record its checksum
         run: |
           test -s apps/markets-tv/android/app/build/outputs/apk/preview/debug/app-preview-debug.apk

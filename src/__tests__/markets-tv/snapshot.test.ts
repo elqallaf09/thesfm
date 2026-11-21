@@ -91,11 +91,12 @@ describe('TV canonical market snapshots', () => {
     expect(getSfmMarketQuote).toHaveBeenCalledTimes(6);
     expect(cryptoTvQuotes).not.toHaveBeenCalled();
   });
-  it('keeps all six Gulf countries in the bounded viewing selection', () => {
+  it('keeps Kuwait in its own market and covers the other five Gulf countries', () => {
     const selection = tvSceneAssets('gulf');
     const selected = [...selection.summary, ...selection.rows];
     expect(selected).toHaveLength(10);
-    expect(new Set(selected.map(asset => asset.country))).toEqual(new Set(['KW', 'SA', 'AE', 'QA', 'BH', 'OM']));
+    expect(new Set(selected.map(asset => asset.country))).toEqual(new Set(['SA', 'AE', 'QA', 'BH', 'OM']));
+    expect(new Set(selected.map(asset => asset.symbol)).size).toBe(selected.length);
     expect(selected.every(asset => asset.mic && asset.currency && asset.providerSymbol)).toBe(true);
   });
   it('keeps a market-specific closing observation and its original receive time', async () => {
@@ -180,8 +181,13 @@ describe('TV canonical market snapshots', () => {
       changePercent: null, source: null, observedAt: null, receivedAt: null, exchange: 'FOREX', country: null, status: 'unavailable' }));
     const snapshot = await loadTvSnapshot('commodities', [], { scene: 'assets' });
     expect(directory).not.toHaveBeenCalled();
+    expect(cryptoTvQuotes).not.toHaveBeenCalled();
+    expect(forexTvQuote).toHaveBeenCalledTimes(3);
+    expect(snapshot.selectionTotal).toBe(7);
+    const coins = await loadTvSnapshot('crypto', [], { scene: 'crypto' });
+    expect(coins.selectionTotal).toBe(3);
     expect(cryptoTvQuotes).toHaveBeenCalledTimes(1);
     expect(vi.mocked(cryptoTvQuotes).mock.calls[0][0].map(asset => asset.symbol)).toEqual(['BTC/USDT', 'ETH/USDT', 'SOL/USDT']);
-    expect(forexTvQuote).toHaveBeenCalledTimes(3); expect(snapshot.selectionTotal).toBe(10);
+    expect(forexTvQuote).toHaveBeenCalledTimes(3);
   });
 });

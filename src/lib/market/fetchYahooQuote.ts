@@ -79,7 +79,13 @@ function numberOrNull(value: unknown) {
 
 function marketTimeFromUnix(value: unknown) {
   const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0 ? new Date(parsed * 1000).toISOString() : null;
+  const date = new Date(parsed * 1000);
+  return parsed > 0 && Number.isFinite(date.getTime()) ? date.toISOString() : null;
+}
+
+function stockObservationTime(value: unknown) {
+  const time = marketTimeFromUnix(value);
+  return time && Date.parse(time) <= Date.now() + 60000 ? time : null;
 }
 
 function unavailableNormalizedQuote(requestedSymbol: string, name: string, unavailableReason: string): YahooNormalizedQuote {
@@ -170,7 +176,7 @@ export async function fetchYahooQuote(symbol: string): Promise<TechStockPrice> {
   const price = numberOrNull(quote?.regularMarketPrice);
   const change = numberOrNull(quote?.regularMarketChange);
   const changePercent = numberOrNull(quote?.regularMarketChangePercent);
-  const available = response.ok && price !== null && price > 0;
+  const available = response.ok && quote?.symbol?.toUpperCase() === symbol.toUpperCase() && price !== null && price > 0;
   const unavailableReason = response.ok
     ? 'provider_returned_empty_quote'
     : `provider_http_${response.status}`;
@@ -195,6 +201,7 @@ export async function fetchYahooQuote(symbol: string): Promise<TechStockPrice> {
     price,
     change,
     changePercent,
+    asOf: stockObservationTime(quote?.regularMarketTime),
     source: 'Yahoo Finance',
     delayed: true,
     available: true,
@@ -226,7 +233,7 @@ export async function fetchYahooChartQuote(symbol: string): Promise<TechStockPri
   const changePercent = change !== null && previousClose !== null && previousClose > 0
     ? (change / previousClose) * 100
     : null;
-  const available = response.ok && price !== null && price > 0;
+  const available = response.ok && meta?.symbol?.toUpperCase() === symbol.toUpperCase() && price !== null && price > 0;
   const unavailableReason = response.ok
     ? 'provider_returned_empty_quote'
     : `provider_http_${response.status}`;
@@ -251,6 +258,7 @@ export async function fetchYahooChartQuote(symbol: string): Promise<TechStockPri
     price,
     change,
     changePercent,
+    asOf: stockObservationTime(meta?.regularMarketTime),
     source: 'Yahoo Finance',
     delayed: true,
     available: true,
