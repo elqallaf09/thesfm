@@ -75,7 +75,7 @@ function dateDaysAgo(days: number) {
   return new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
 }
 
-type CryptoNewsOptions = { headlinesLimit: number; schedulePersistence: (task: () => Promise<void>) => void };
+type CryptoNewsOptions = { headlinesLimit: number };
 
 export async function fetchCryptoNews(languageInput?: string | null, options?: CryptoNewsOptions) {
   const language = normalizeNewsLanguage(languageInput);
@@ -91,7 +91,7 @@ export async function fetchCryptoNews(languageInput?: string | null, options?: C
     language,
     limit: options?.headlinesLimit ?? 180,
   }, { page: 1, pageSize: options?.headlinesLimit ?? 60, sort: options ? 'latest' : 'importance',
-    ...(options ? { providerBudgetMs: 6000, schedulePersistence: options.schedulePersistence } : {}),
+    ...(options ? { storeBudgetMs: 1500, providerBudgetMs: 6000, skipPersistence: true } : {}),
   });
 
   const baseItems: CryptoNewsItem[] = aggregated.stories.map(story => ({

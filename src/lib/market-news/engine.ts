@@ -68,6 +68,7 @@ export type FinancialNewsAggregationOptions = {
   forceExternal?: boolean;
   providers?: FinancialNewsProvider[];
   skipPersistence?: boolean;
+  storeBudgetMs?: number;
   providerBudgetMs?: number;
   schedulePersistence?: (task: () => Promise<void>) => void;
   requestId?: string;
@@ -160,6 +161,7 @@ function stableParams(params: Partial<NewsFetchParams>, options: FinancialNewsAg
     officialOnly: params.officialOnly === true,
     strictEntityFilter: params.strictEntityFilter === true,
     page: options.page ?? 1,
+    storeBudgetMs: options.storeBudgetMs,
     pageSize: options.pageSize ?? DEFAULT_PAGE_SIZE,
     sort: options.sort ?? 'latest',
   };
@@ -535,6 +537,9 @@ async function runAggregation(params: NewsFetchParams, options: FinancialNewsAgg
   const pageSize = clampInteger(options.pageSize, DEFAULT_PAGE_SIZE, 1, MAX_PAGE_SIZE);
   const stored = await searchStoredNews({
     ...params,
+    ...(options.storeBudgetMs ? { signal: AbortSignal.any([
+      AbortSignal.timeout(options.storeBudgetMs), ...(params.signal ? [params.signal] : []),
+    ]) } : {}),
     symbols: params.strictEntityFilter ? params.symbols : [],
     companyNames: params.companyNames,
     page,

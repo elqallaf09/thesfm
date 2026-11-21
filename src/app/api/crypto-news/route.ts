@@ -1,5 +1,5 @@
 import { rateLimitRequest } from '@/lib/server/rateLimiter';
-import { after, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { fetchCryptoNews } from '@/lib/market/fetchCryptoNews';
 import { parseNewsLimit } from '@/lib/news/apiPayload';
 
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
     const limit = parseNewsLimit(url.searchParams.get('limit'));
     const headlines = url.searchParams.get('view') === 'headlines';
     const payload = await fetchCryptoNews(url.searchParams.get('lang'), headlines ? {
-      headlinesLimit: Math.min(limit, 24), schedulePersistence: task => after(task),
+      headlinesLimit: Math.min(limit, 24),
     } : undefined);
 
     return NextResponse.json({

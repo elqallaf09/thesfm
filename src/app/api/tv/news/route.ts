@@ -6,7 +6,6 @@ import { rateLimitRequest } from '@/lib/server/rateLimiter';
 import { tvJson } from '@/lib/server/markets-tv/http';
 import { cachedTvNews } from '@/lib/server/markets-tv/newsCache';
 import { tvNewsParams } from '@/lib/server/markets-tv/newsChannels';
-import { after } from 'next/server';
 export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
   const limit = rateLimitRequest(request, { prefix: 'tv-news', max: 20 });
@@ -19,7 +18,9 @@ export async function GET(request: Request) {
   try {
     const snapshot = await cachedTvNews(language, async () => {
       const filters = tvNewsParams(language, channel);
-      const result = await aggregateFinancialNews(filters, { pageSize: filters.limit, sort: 'latest', providerBudgetMs: 6000, schedulePersistence: task => after(task) });
+      const result = await aggregateFinancialNews(filters, {
+        pageSize: filters.limit, sort: 'latest', storeBudgetMs: 1500, providerBudgetMs: 6000, skipPersistence: true,
+      });
       const missing = result.stories.filter(s => !tvNewsPhotoUrl(s.imageUrl) && safeTvUrl(s.originalUrl)).slice(0, 12);
       const recovered = new Map<string, string>();
       for (let offset = 0; offset < missing.length; offset += 6) {
