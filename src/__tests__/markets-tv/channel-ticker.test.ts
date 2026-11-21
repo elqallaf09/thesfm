@@ -17,6 +17,7 @@ describe('TV ticker scope and source evidence', () => {
 
   it('only requests quotes for symbols from the matching event feed', () => {
     const feed = { topic: 'earnings-news', items: [{ symbols: ['NVDA', 'NVDA', 'AAPL', 'not a ticker'] }] };
+    expect(channelTickerPath('underDollarNews', undefined)).toBe('/api/market/special-news?topic=stocks-under-1&part=ticker');
     expect(channelTickerPath('analystNews', feed)).toBeNull();
     expect(channelTickerPath('news', feed)).toBe(GLOBAL_INDEX_TICKER);
     expect(channelTickerPath('earningsNews', feed)).toContain('symbols=NVDA%2CAAPL');

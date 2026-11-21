@@ -30,7 +30,7 @@ export function channelTickerPath(channel: TvReceiverNewsChannel, news: unknown)
   if (channel in CATEGORY_TICKERS) return CATEGORY_TICKERS[channel as keyof typeof CATEGORY_TICKERS];
   const path = TV_NEWS_FEEDS[channel];
   const base = path + '&part=ticker';
-  if (channel === 'fedNews' || channel === 'healthcareNews' || channel === 'newStocksNews') return base;
+  if (channel === 'fedNews' || channel === 'healthcareNews' || channel === 'newStocksNews' || channel === 'underDollarNews') return base;
   const feed = record(news);
   if (feed.topic !== new URL(path, 'https://tv.invalid').searchParams.get('topic') || !Array.isArray(feed.items)) return null;
   const symbols = new Set<string>();

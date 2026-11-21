@@ -12,6 +12,7 @@ import {
   translateNewsItems,
 } from '@/lib/translation/translateNewsText';
 import { TOPICS, type TopicId, type StaticTickerConfig, type MetalTickerConfig } from '@/lib/market-news/specialTopics';
+import { underDollarTicker } from '@/lib/market-news/underDollarTicker.server';
 import { newListingTicker } from '@/lib/market-news/newListingTicker.server';
 import { rateLimitRequest } from '@/lib/server/rateLimiter';
 import { isIpoTopic } from '@/lib/market-news/ipoRegions';
@@ -36,7 +37,7 @@ const METAL_TICKER: MetalTickerConfig[] = [
   { id: 'palladium', symbol: 'PA=F', name: 'Palladium', assetType: 'unknown', currency: 'USD', meta: 'USD/oz' },
 ];
 
-function uniqueStorySymbols(stories: ConsolidatedNewsStory[], limit: number) {
+function uniqueStorySymbols(stories: ConsolidatedNewsStory[], limit = Infinity) {
   const symbols: string[] = [];
   const seen = new Set<string>();
   for (const story of stories) {
@@ -224,6 +225,10 @@ export async function GET(request: NextRequest) {
       if (isIpoTopic(topic)) return NextResponse.json({ success: true, topic, tickerItems: [] }, { headers });
       const symbols = (request.nextUrl.searchParams.get('symbols') ?? '').split(',')
         .filter(symbol => /^[A-Z][A-Z0-9.-]{0,14}$/.test(symbol)).slice(0, 12);
+      if (topic === 'stocks-under-1' && !symbols.length) {
+        const tickerItems = await underDollarTicker();
+        return NextResponse.json({ success: true, topic, tickerItems }, { headers });
+      }
       const prices = await fetchSpecialQuotes(symbols);
       const fixed = topic === 'federal-reserve'
         ? FED_TICKER
@@ -250,6 +255,8 @@ export async function GET(request: NextRequest) {
       // Clicking refresh must not bypass every provider cache simultaneously.
     }, {
       page: 1, pageSize: 60, sort: 'latest', forceExternal: refresh,
+      // The stored text index cannot tell whether a company still trades below $1.
+      includeLiveProviders: topic === 'stocks-under-1' || undefined,
       providers: createSpecialNewsProviders(topic), providerBudgetMs: 6_500,
       schedulePersistence: task => after(task),
     });
@@ -259,7 +266,8 @@ export async function GET(request: NextRequest) {
     let prices = new Map<string, SpecialQuote>();
     if (topic === 'stocks-under-1') {
       stories = await resolveUnderOneSymbols(stories);
-      prices = await fetchSpecialQuotes(uniqueStorySymbols(stories, 18));
+      const symbols = uniqueStorySymbols(stories);
+      prices = await fetchSpecialQuotes(symbols, symbols.length);
       stories = stories.filter(story => story.symbols.some(symbol => verifiedUnderOne(prices.get(symbol.toUpperCase()))));
     }
     const rawItems = stories.map(story => rawUiItem(story, firstUsablePrice(story, prices, topic === 'stocks-under-1'), isIpoTopic(topic)));

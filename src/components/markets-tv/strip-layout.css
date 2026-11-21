@@ -67,6 +67,13 @@
 .tv-screen .tv-readable-strips .tv-market-strip-window:focus-within {
   overflow-x: auto;
 }
+/* The -50% loop must span one full set. In a narrow WebKit flex
+   viewport the track can otherwise shrink to the screen while its cards overflow. */
+.tv-screen .tv-market-strip-track {
+  flex: none;
+  min-width: max-content;
+  max-width: none;
+}
 .tv-screen .tv-readable-strips .tv-market-strip-track[data-marquee=false] {
   animation: none;
   transform: none;

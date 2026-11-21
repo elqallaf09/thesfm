@@ -8,6 +8,7 @@ import { receiverText } from '@/lib/markets-tv/receiver';
 import { tvQuoteTime, tvText } from '@/lib/markets-tv/i18n';
 import { useTvResource } from './useTvResource';
 import { TvHeadlines } from './TvSceneSidebar';
+import { TvUnderDollarHeadlines } from './TvUnderDollarHeadlines';
 import { TvNewsDesk } from './TvNewsDesk';
 import { TvNewsStatus } from './TvNewsStatus';
 import { requestTvResource } from './tvResourceCache';
@@ -38,10 +39,11 @@ export function TvReceiverNews({ language, channel, now, revision, onStory, onRe
         {tvText(language, 'available')}: {feed.updatedAt ? <time dateTime={feed.updatedAt}>{tvQuoteTime(feed.updatedAt, language, now)}</time> : '—'}
         {feed.partial && ` · ${receiverText(language, 'partial')}`}{feed.stored && ` · ${receiverText(language, 'stored')}`}
       </p>
+      {channel === 'underDollarNews' && feed.stories.length > 0 && <TvUnderDollarHeadlines stories={feed.stories} language={language} playing={playing}/>}
       {!feed.stories.length && (news.error || feed.invalid) ? <TvNewsStatus language={language} error={news.error || 'INVALID_FEED'} onRetry={onRefresh}/>
         : channel === 'kuwait' ? <TvHeadlines news={feed.stories} language={language} now={now} onStory={onStory} playing={playing}/> : <TvNewsDesk key={`${channel}:${language}`} news={feed.stories} language={language} now={now} onStory={onStory} playing={playing} onPaginationAvailable={onPaginationAvailable}/>}
     </>}
-    {channel !== 'kuwait' && <TvPageTicker path={channelTickerPath(channel, news.data)} loading={news.loading}/>}
+    {channel !== 'kuwait' && <TvPageTicker path={channelTickerPath(channel, news.data)} fallbackData={channel === 'underDollarNews' ? news.data : undefined} loading={news.loading}/>}
   </aside>;
 }
 

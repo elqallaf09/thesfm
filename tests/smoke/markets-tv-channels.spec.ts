@@ -1,5 +1,6 @@
-import { openTvMenu, closeTvMenu } from './helpers/tv-controls';
+import { chooseTvBroadcast, chooseTvDestination, openTvMenu, closeTvMenu } from './helpers/tv-controls';
 import { expect, test, type Page } from '@playwright/test';
+import { HOME_URL, PRESENTATION_BRIDGE, classifyLink } from '../../apps/markets-tv-mobile/src/navigation';
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => sessionStorage.setItem('sfm-tv-welcome-shown', '1'));
@@ -73,6 +74,75 @@ test('TV preferences remember stock choices, order, per-market speed, density an
   await expect(page.locator('.tv-market-strip').first()).toHaveAttribute('data-market', 'BOURSA_KUWAIT');
   await expect(page.locator('[data-market="US"] .tv-market-strip-set').first().locator('button')).toHaveCount(1);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('sfm-markets-tv-settings-v1')!).marketSpeeds.US)).toBe(80);
+});
+
+test('phone app entry shows the whole verified news feed in a separate moving strip', async ({ page }) => {
+  await page.setViewportSize({ width: 430, height: 780 });
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await fixtures(page);
+  await page.addInitScript(() => {
+    Object.assign(window, { __sfmTvIosLaunch: 'qa', ReactNativeWebView: {
+      postMessage: (message: string) => { document.documentElement.dataset.phoneMessage = message; },
+    } });
+    localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ language: 'ar', marketIds: ['US'] }));
+  });
+  const stamp = new Date().toISOString();
+  const stories = Array.from({ length: 27 }, (_, i) => ({
+    id: String(i), ticker: 'QA' + i, title: 'خبر الشركة ' + i, url: 'https://example.com/story/' + i,
+    source: 'وكالة الاختبار', publishedAt: stamp, price: 0.25, priceVerified: true,
+  }));
+  await page.route('**/api/market/special-news?topic=stocks-under-1**', route => {
+    const ticker = new URL(route.request().url()).searchParams.get('part') === 'ticker';
+    return route.fulfill({ json: { success: true, topic: 'stocks-under-1',
+      items: ticker ? [] : [...stories, { ...stories[0], id: 'excluded', url: 'https://example.com/excluded', price: 1 }],
+      tickerItems: [{ symbol: 'QA0', price: 0.25, currency: 'USD', source: 'QA', available: true, asOf: stamp }],
+    } });
+  });
+  await page.goto(new URL(HOME_URL).pathname);
+  await page.addScriptTag({ content: PRESENTATION_BRIDGE });
+  await expect(page.locator('html')).toHaveAttribute('data-phone-message', /sfm-tv-presentation/);
+  await chooseTvDestination(page, 'strips');
+  const market = page.locator('.tv-market-strip-track').first();
+  await expect(market).toHaveAttribute('data-marquee', 'true');
+  const offset = () => market.evaluate(el => el.firstElementChild!.getBoundingClientRect().x);
+  const start = await offset();
+  await expect.poll(async () => Math.abs((await offset()) - start)).toBeGreaterThan(25);
+  await chooseTvBroadcast(page, 'underDollarNews');
+  const wire = page.locator('.tv-under-dollar-headlines'), loop = wire.locator('.tv-headline-loop').first();
+  await expect(wire).toBeInViewport({ ratio: 1 });
+  await expect(loop.locator('a')).toHaveCount(27);
+  await expect(loop.locator('a').last()).toContainText('QA26');
+  await expect(page.locator('.tv-quote-marquee')).toContainText('QA0');
+  const x = await loop.evaluate(el => el.getBoundingClientRect().x);
+  await expect.poll(() => loop.evaluate(el => el.getBoundingClientRect().x)).toBeGreaterThan(x + 20);
+  await expect(wire.locator('a[href$="/excluded"]')).toHaveCount(0);
+  const link = loop.locator('a').first();
+  expect(classifyLink((await link.getAttribute('href'))!)).toBe('external');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(loop).toHaveCSS('animation-name', 'none');
+  await expect(wire.locator('[aria-hidden=true]')).toBeHidden();
+  await page.context().route('https://example.com/story/0', r => r.fulfill({ body: 'QA publisher' }));
+  const [publisher] = await Promise.all([page.waitForEvent('popup'), link.click()]);
+  await expect(publisher).toHaveURL(stories[0].url);
+});
+
+test('portrait market strips move through one whole quote set per cycle', async ({ page }) => {
+  await fixtures(page);
+  await page.setViewportSize({ width: 430, height: 820 });
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.goto('/tv/strips');
+  await closeTvMenu(page);
+  const track = page.locator('[data-market="US"] .tv-market-strip-track');
+  await expect(track).toHaveAttribute('data-marquee', 'true');
+  await expect(track).toHaveCSS('animation-play-state', 'running');
+  const width = await track.locator('.tv-market-strip-set').first().evaluate(el => el.getBoundingClientRect().width);
+  const distance = await track.evaluate(el => {
+    const animation = el.getAnimations()[0];
+    animation.pause();
+    animation.currentTime = Number(animation.effect!.getTiming().duration) / 2;
+    return Math.abs(new DOMMatrixReadOnly(getComputedStyle(el).transform).m41);
+  });
+  expect(Math.abs(distance - width / 2)).toBeLessThan(2);
 });
 
 test('TV density preserves source evidence, batch coverage and responsive layout', async ({ page }) => {
