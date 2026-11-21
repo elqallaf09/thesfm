@@ -319,7 +319,7 @@ test('the photographed stock listings keep their own logos or their full exchang
     const mark = row.locator('.tv-asset-icon');
     if (i < 2) {
       await expect(mark).toHaveAttribute('data-logo-state', 'loaded');
-      await expect(mark.locator('img')).toHaveAttribute('src', i === 0 ? './markets-tv/assets/svix.png' : './markets-tv/assets/ganeshhousing.svg');
+      await expect(mark.locator('img')).toHaveAttribute('src', i === 0 ? './markets-tv/assets/svix.png' : './markets-tv/assets/ganeshhousing.webp');
     } else {
       await expect(mark).toHaveAttribute('data-logo-state', 'fallback');
       await expect(mark.locator('.tv-ticker-lettering')).toHaveText(symbol);

@@ -52,7 +52,7 @@ export function tvListingMark(symbol: string, exchange: string | null) {
   } else if (india.has(venue) && /^[A-Z0-9&-]+(?:\.NS)?$/.test(ticker)) {
     const local = ticker.replace(/\.NS$/, '');
     qualified = local + '.NS';
-    if (local === 'GANESHHOU') return { file: 'ganeshhousing.svg', urls: [] };
+    if (local === 'GANESHHOU') return { file: 'ganeshhousing.webp', urls: [] };
   } else if (ticker === 'SVIX' && us.has(venue)) {
     return { file: 'svix.png', urls: [] };
   } else {
