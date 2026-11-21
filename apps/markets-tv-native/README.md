@@ -4,6 +4,19 @@ This Expo client targets Android TV and Apple TV using React Native TV. Version 
 
 The atlas uses pixel-preserving PNG copies of the existing Kuwait panorama and Robinson world artwork. Its pins, regions and clock time zones use the shared atlas contract. My Account displays a bundled, deterministic QR and the fixed `https://www.the-sfm.com/profile` URL. Editing happens on the phone through the existing authenticated profile page, including MFA when required; the TV token is never used for profile editing or placed in a URL. These three assets total less than 1 MiB and need no remote artwork service or additional native dependency.
 
+The menu also offers **Wallpaper / خلفية الشاشة** above the paged channel guide.
+Its seven previews use the shared web wallpaper IDs and AR/EN/FR names. Selecting
+a tile applies the background immediately and saves it with the existing SecureStore
+display preferences. Back/Menu returns to the guide without changing the wallpaper;
+selection returns to the current broadcast. Paging, ticker motion and the atlas tour
+pause while the gallery is open. The selected tile receives initial remote focus,
+and returning to the guide restores focus to its wallpaper shortcut.
+
+The seven PNG assets in `assets/wallpapers/` are lossless RGB conversions of
+`public/markets-tv/exchange-panorama.webp` and the six shared files under
+`public/markets-tv/assets/wallpapers/`. They total 2.66 MiB, are bundled for offline
+use on both TV platforms, and add no native dependency or remote image service.
+
 ## Development
 
 Use Node 22.13.0 and pnpm 11.1.3. This directory has an isolated pnpm workspace and lockfile. Its `react-native` dependency aliases the exact `react-native-tvos@0.86.3-0` release, matched to Expo 57.0.27 and React 19.2.3. Do not resolve it to the phone-only React Native dependency from `apps/expo-go`.

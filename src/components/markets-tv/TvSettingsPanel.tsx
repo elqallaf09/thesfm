@@ -1,14 +1,16 @@
 'use client';
 
 import { useRef, useState, type ButtonHTMLAttributes, type KeyboardEvent, type ReactNode } from 'react';
-import { Check, Languages, Monitor, Play, RotateCcw } from 'lucide-react';
+import { Check, Image as ImageIcon, Languages, Monitor, Play, RotateCcw } from 'lucide-react';
 import { TV_GROUPS, TV_STRIP_SPEEDS, DEFAULT_TV_STRIP_SPEED, type TvDisplayMode, type TvSettings } from '@/lib/markets-tv/types';
 import { tvText } from '@/lib/markets-tv/i18n';
 import { TV_SCENE_ORDER, tvSceneText } from '@/lib/markets-tv/scene-display';
 import { obsText } from '@/lib/markets-tv/obsidian';
 import { welcomeText } from '@/lib/markets-tv/welcome';
+import { normalizeWallpaper, TV_WALLPAPERS } from '@/lib/markets-tv/wallpapers';
 import { tvRemoteCommand } from './tvRemoteKeys';
 import { TvBuildInfo } from './TvBuildInfo';
+import { tvMenuText } from './tvMenuCopy';
 import './settings-panel.css';
 
 const sections = [
@@ -37,10 +39,10 @@ function Choice({ selected, children, ...props }: ButtonHTMLAttributes<HTMLButto
   </button>;
 }
 
-export function TvSettingsPanel({ settings, change, stripsOnly = false, displayMode = 'viewing', changeDisplayMode, customize, onReplay }: {
+export function TvSettingsPanel({ settings, change, stripsOnly = false, displayMode = 'viewing', changeDisplayMode, customize, onReplay, onWallpapers }: {
   settings: TvSettings; change: (value: TvSettings) => void; stripsOnly?: boolean;
   displayMode?: TvDisplayMode; changeDisplayMode?: (mode: TvDisplayMode) => void;
-  customize: () => void; onReplay?: () => void;
+  customize: () => void; onReplay?: () => void; onWallpapers?: () => void;
 }) {
   const [section, setSection] = useState<SettingsSection>('appearance');
   const content = useRef<HTMLDivElement>(null);
@@ -106,6 +108,13 @@ export function TvSettingsPanel({ settings, change, stripsOnly = false, displayM
             </Choice>)}
           </div>
         </Setting>
+        {onWallpapers && <Setting label={tvMenuText(settings.language, 'wallpapers')} wide>
+          <button type="button" className="tv-settings-wallpaper" data-tv-focus-key="settings-wallpapers" onClick={onWallpapers}>
+            <ImageIcon aria-hidden="true"/>
+            <span><span>{tvMenuText(settings.language, 'chooseWallpaper')}</span>
+              <small>{TV_WALLPAPERS[normalizeWallpaper(settings.wallpaper)][settings.language]}</small></span>
+          </button>
+        </Setting>}
       </div>
       <div className="tv-settings-section" role="tabpanel" id="tv-settings-panel-display" aria-labelledby="tv-settings-tab-display" hidden={section !== 'display'}>
         {changeDisplayMode && <Setting label={tvSceneText(settings.language, 'displayMode')} wide>

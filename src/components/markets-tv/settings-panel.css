@@ -121,6 +121,11 @@
 .tv-settings-panel .tv-setting-check { width: .85em; height: .85em; opacity: 0; }
 .tv-settings-panel [aria-pressed=true] > .tv-setting-check { opacity: 1; }
 
+.tv-screen .tv-settings-panel .tv-settings-wallpaper { justify-content: flex-start; text-align: start; gap: .65em; }
+.tv-settings-wallpaper > svg { flex: none; }
+.tv-settings-wallpaper > span { display: grid; gap: .15em; }
+.tv-settings-wallpaper small { color: var(--tv-muted); font-size: max(14px, .8em); }
+
 .tv-screen .tv-settings-panel .tv-settings-switch { align-self: flex-start; justify-content: flex-start; min-width: 7em; }
 .tv-settings-switch-track {
   display: inline-flex;

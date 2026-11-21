@@ -1,6 +1,7 @@
 import { isTvReceiverChannel, nextTvReceiverChannel, receiverText, TV_RECEIVER_CHANNELS, type TvReceiverChannel } from '../../../src/lib/markets-tv/receiver';
 import { TV_ATLAS_CITIES, type TvAtlasRegion } from '../../../src/lib/markets-tv/atlas';
 import { tvText } from '../../../src/lib/markets-tv/i18n';
+import { normalizeWallpaper } from '../../../src/lib/markets-tv/wallpapers';
 import type { Language } from './api';
 import { featureText } from './featureCopy';
 
@@ -8,6 +9,7 @@ export const NATIVE_FEATURES = ['brief', 'map', 'account'] as const;
 export type NativeFeature = typeof NATIVE_FEATURES[number];
 export type NativeDestination = TvReceiverChannel | NativeFeature;
 export type NativeNavigation = { destination: NativeDestination; channel: TvReceiverChannel; region?: TvAtlasRegion };
+export type NativeDialog = 'guide' | 'pair' | 'wallpapers' | null;
 export const NATIVE_GUIDE = [...TV_RECEIVER_CHANNELS, ...NATIVE_FEATURES];
 export const NATIVE_GUIDE_PAGE_SIZE = 5;
 export const NATIVE_GUIDE_PAGES = Math.ceil(NATIVE_GUIDE.length / NATIVE_GUIDE_PAGE_SIZE);
@@ -29,6 +31,8 @@ export function backNativeNavigation(current: NativeNavigation): NativeNavigatio
   if (current.destination === 'allStocks' && current.region) return { ...current, destination: 'map' };
   return current.destination !== 'allStocks' ? { ...DEFAULT_NATIVE_NAVIGATION } : null;
 }
+/** The gallery belongs to the guide; dismissing it must not leave the current channel. */
+export function backNativeDialog(dialog: NativeDialog): NativeDialog { return dialog === 'wallpapers' ? 'guide' : null; }
 export function nativeCanRotate(destination: NativeDestination) { return destination !== 'map' && destination !== 'account'; }
 export function nativeGuidePage(destination: NativeDestination) { return Math.floor(NATIVE_GUIDE.indexOf(destination) / NATIVE_GUIDE_PAGE_SIZE); }
 export function nativeDestinationText(language: Language, destination: NativeDestination) {
@@ -57,6 +61,6 @@ export function restoreNativePreferences(raw: string | null) {
   const navigation: NativeNavigation = { destination, channel: isTvReceiverChannel(destination) ? destination : channel, ...(region ? { region } : {}) };
   return {
     language: value.language === 'ar' || value.language === 'en' || value.language === 'fr' ? value.language : 'ar' as Language,
-    light: value.light === true, rotation: value.rotation !== false, navigation,
+    light: value.light === true, rotation: value.rotation !== false, wallpaper: normalizeWallpaper(value.wallpaper), navigation,
   };
 }
