@@ -16,7 +16,7 @@ const currencyRegions: Record<string, string> = {
   MXN: 'MX', ZAR: 'ZA', TRY: 'TR', KRW: 'KR', BRL: 'BR', PLN: 'PL', THB: 'TH',
 };
 const energyFiles: Record<string, string> = {
-  'CL=F': 'oil.svg', 'BZ=F': 'oil.svg', 'NYMEX:CL1!': 'oil.svg', 'NG=F': 'gas.svg', 'NYMEX:NG1!': 'gas.svg',
+  'CL=F': 'oil.webp', 'BZ=F': 'oil.webp', 'NYMEX:CL1!': 'oil.webp', 'NG=F': 'gas.webp', 'NYMEX:NG1!': 'gas.webp',
 };
 const companySymbols = new Set(['TSLA','AAPL','MSFT','NVDA','AMZN','GOOGL']);
 const listingLogos: Record<string, string[]> = {
@@ -52,7 +52,7 @@ function TvResolvedIcon({ quote, group }: IconProps) {
     if (kind === 'global') return index ? [`https://s3-symbol-logo.tradingview.com/indices/${index.image}--big.svg`] : [];
     if (kind === 'forex') return [];
     const base = symbol.split(/[/-]/)[0];
-    if (kind === 'crypto' && cryptoFiles.has(base)) return [assetPath('crypto/' + base.toLowerCase() + '.svg')];
+    if (kind === 'crypto' && cryptoFiles.has(base)) return [assetPath('crypto/' + base.toLowerCase() + '.webp')];
     const listing = tvListingMark(symbol, exchange);
     if (listing) return listing.file ? [assetPath(listing.file)] : listing.urls;
     const local = metalFile[symbol] || energyFiles[symbol] || (listingLogos[symbol]?.includes(exchange || '') ? symbol.toLowerCase() + '.png' : null)
