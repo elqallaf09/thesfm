@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import {
-  Bitcoin, Building2, ChartNoAxesCombined, Clock3, Coins, Globe2, Landmark, LogIn, LogOut, Map, Monitor, Newspaper,
+  Bitcoin, Building2, ChartNoAxesCombined, Clock3, Coins, DollarSign, Globe2, Landmark, LogIn, LogOut, Map, Monitor, Newspaper,
   Rows3, Settings2, SlidersHorizontal, Star, Tv, UserRound, WalletCards, Wrench, X,
   type LucideIcon,
 } from 'lucide-react';
@@ -14,7 +14,7 @@ import { tvSceneText } from '@/lib/markets-tv/scene-display';
 import type { TvLanguage } from '@/lib/markets-tv/types';
 import './side-menu.css';
 
-export type TvSideDestination = 'hall' | 'allStocks' | 'strips' | 'world' | 'gulf' | 'assets' | 'crypto' | 'kuwait' | 'news' | 'sessions' | 'watchlist' | 'investments' | 'brief' | 'map';
+export type TvSideDestination = 'hall' | 'allStocks' | 'strips' | 'world' | 'gulf' | 'assets' | 'crypto' | 'forex' | 'kuwait' | 'news' | 'sessions' | 'watchlist' | 'investments' | 'brief' | 'map';
 
 type Props = {
   language: TvLanguage;
@@ -60,6 +60,7 @@ export function TvSideMenu({ language, open, active, paired, deviceName, onClose
     route('gulf', tvSceneText(language, 'gulf'), Landmark),
     route('assets', tvSceneText(language, 'assets'), Coins),
     route('crypto', tvSceneText(language, 'crypto'), Bitcoin),
+    route('forex', receiverText(language, 'forex'), DollarSign),
     route('news', copy.news, Newspaper),
     route('sessions', receiverText(language, 'sessions'), Clock3),
     route('watchlist', tvSceneText(language, 'watchlist'), Star),
@@ -131,3 +132,4 @@ export function TvSideMenu({ language, open, active, paired, deviceName, onClose
     </section>
   </div>;
 }
+

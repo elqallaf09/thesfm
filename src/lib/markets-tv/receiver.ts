@@ -1,7 +1,7 @@
 import type { TvLanguage, TvView } from './types';
 import { TV_EXTRA_NEWS_CHANNELS, TV_NEWS_LABELS } from './newsReceiver';
 
-export const TV_RECEIVER_CHANNELS = ['allStocks', 'technology', 'kuwait', 'sessions', 'investments', ...TV_EXTRA_NEWS_CHANNELS, 'news'] as const;
+export const TV_RECEIVER_CHANNELS = ['allStocks', 'technology', 'kuwait', 'sessions', 'investments', ...TV_EXTRA_NEWS_CHANNELS, 'forex', 'news'] as const;
 export type TvReceiverChannel = typeof TV_RECEIVER_CHANNELS[number];
 export function isTvReceiverChannel(value: unknown): value is TvReceiverChannel {
   return TV_RECEIVER_CHANNELS.includes(value as TvReceiverChannel);
@@ -26,7 +26,10 @@ const COPY = {
   technologyHelp: ['أخبار مرتبطة بأسهم شركات التقنية من مصادر الموقع.', 'News linked to technology stocks from the website’s sources.', 'Actualités des valeurs technologiques provenant des sources du site.'],
   kuwaitHelp: ['أسهم بورصة الكويت وأخبارها فقط · تحديث الأسعار حسب توفر المصدر', 'Kuwait listings and news only · Prices refresh as sources permit', 'Titres et actualités du Koweït · Actualisation selon les sources'],
   newsHelp: ['أخبار القسم مع الصور والمصدر ووقت النشر', 'Section news with photos, source and publication time', 'Actualités avec photo, source et date de publication'],
-  shariaHelp: ['الحالة الشرعية موضحة لكل خبر حسب تصنيف الموقع', 'Each story shows the website’s screening status', 'Chaque article indique le statut de conformité du site'],
+  forex: ['أسعار العملات', 'Foreign exchange', 'Marché des changes'],
+  forexHelp: ['أسعار الصرف ووقت تسعير كل زوج', 'Exchange rates and source times by currency pair', 'Taux de change et heure de cotation par paire'],
+  shariaHelp: ['أخبار الشركات المصنّفة متوافقة في فحص الموقع', 'News from companies screened as compliant by the site', 'Actualités des sociétés jugées conformes par le site'],
+  noScreenedNews: ['لا تتوفر حاليًا أخبار مرتبطة مباشرةً بالشركات المتوافقة', 'No recent headlines directly linked to screened companies', 'Aucune actualité récente directement liée aux sociétés conformes'],
   partial: ['تغطية جزئية', 'Partial coverage', 'Couverture partielle'],
   stored: ['أخبار محفوظة من المصدر', 'Stored source news', 'Actualités conservées de la source'],
   compliant: ['متوافق حسب المصدر', 'Compliant per source', 'Conforme selon la source'],
@@ -39,3 +42,4 @@ const COPY = {
 export function receiverText(language: TvLanguage, key: keyof typeof COPY): string {
   return COPY[key][language === 'ar' ? 0 : language === 'fr' ? 2 : 1];
 }
+

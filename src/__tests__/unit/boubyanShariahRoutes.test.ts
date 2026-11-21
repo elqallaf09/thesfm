@@ -82,6 +82,17 @@ describe('Shariah ticker and news share the reviewed publication decision', () =
     }
   });
 
+  it('applies the current stock decision and issuer identity before limiting TV headlines', async () => {
+    mocks.news.mockResolvedValue({ success: true, items: [
+      ...Array.from({ length: 6 }, () => article({ companyName: 'Another issuer' })),
+      article({ reportedCompanyNames: ['Unrelated issuer'], id: 'symbol-only' }), article({ id: 'matched' }),
+    ] });
+    const payload = await (await newsGET(new Request('https://example.com/api/sharia-stocks/news?scope=compliant&limit=1'))).json();
+    expect(payload.items.map((item: { id: string }) => item.id)).toEqual(['matched']);
+    expect(mocks.news.mock.calls[0][2].screenedSymbols.has('AAPL')).toBe(true);
+    expect(mocks.news.mock.calls[0][2].screenedSymbols.has('SPUS')).toBe(false);
+  });
+
   it('separates a news-provider failure from the available Shariah reference', async () => {
     mocks.news.mockRejectedValue(new Error('news provider unavailable'));
     const response = await newsGET(new Request('https://example.com/api/sharia-stocks/news'));

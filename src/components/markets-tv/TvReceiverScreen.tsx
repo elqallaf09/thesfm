@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight, Pause, Play, RefreshCw } from 'lucide-react';
 import type { TvLanguage, TvMarket, TvNews, TvQuote, TvSnapshot } from '@/lib/markets-tv/types';
 import type { TvReceiverChannel } from '@/lib/markets-tv/receiver';
+import { TvPageTicker } from './TvPageTicker';
 import { TvReceiverNews } from './TvReceiverNews';
 import { receiverText } from '@/lib/markets-tv/receiver';
 import { TV_BROADCAST_PAGE_MS } from '@/lib/markets-tv/broadcast';
@@ -16,10 +17,11 @@ type Channel = Exclude<TvReceiverChannel, 'sessions' | 'investments'>;
 type Props = { channel: Channel; language: TvLanguage; now: number; revision: number; playing: boolean;
   togglePlay: () => void; onQuote: (quote: TvQuote) => void; onStory: (story: TvNews) => void; onRefresh: () => void; onNewsTopics: () => void; onPaginationAvailable?: (available: boolean) => void };
 const EMPTY_MARKETS: TvMarket[] = [];
+const FOREX: TvMarket = { id: 'forex', group: 'forex', labelAr: 'أزواج العملات', labelEn: 'Currency pairs', labelFr: 'Paires de devises', count: 0, status: 'unknown' };
 const KUWAIT: TvMarket = { id: 'BOURSA_KUWAIT', group: 'gulf', labelAr: 'بورصة الكويت', labelEn: 'Boursa Kuwait', labelFr: 'Bourse du Koweït', count: 0, status: 'unknown' };
 
 export default function TvReceiverScreen({ channel, language, now, revision, playing, togglePlay, onQuote, onStory, onRefresh, onNewsTopics, onPaginationAvailable }: Props) {
-  const newsOnly = channel !== 'allStocks' && channel !== 'kuwait';
+  const newsOnly = channel !== 'allStocks' && channel !== 'kuwait' && channel !== 'forex';
   const catalog = useTvResource<{ markets: TvMarket[] }>(channel === 'allStocks' ? '/api/tv/catalog' : null, 300000, '', revision);
   const sourceMarkets = catalog.data?.markets || EMPTY_MARKETS;
   const markets = useMemo(() => sourceMarkets.filter(m => ['world','us','gulf','europe','asia'].includes(m.group)
@@ -32,7 +34,7 @@ export default function TvReceiverScreen({ channel, language, now, revision, pla
     const fit = () => { setPageSize(query.matches ? 4 : 6); setCursors({}); };
     fit(); query.addListener(fit); return () => query.removeListener(fit);
   }, []);
-  const market = channel === 'kuwait' ? KUWAIT : markets.find(m => m.id === selected) || markets[marketIndex % Math.max(1, markets.length)];
+  const market = channel === 'kuwait' ? KUWAIT : channel === 'forex' ? FOREX : markets.find(m => m.id === selected) || markets[marketIndex % Math.max(1, markets.length)];
   const page = market ? cursors[market.id] || 0 : 0;
   const snapshot = useTvResource<TvSnapshot>(!newsOnly && market
     ? `/api/tv/snapshot?group=${market.group}&market=${market.id}&page=${page}&pageSize=${pageSize}` : null, 30000, '', revision);
@@ -56,7 +58,7 @@ export default function TvReceiverScreen({ channel, language, now, revision, pla
   const label = market ? language === 'ar' ? market.labelAr : language === 'fr' ? market.labelFr : market.labelEn : '—';
   const quotes = snapshot.data?.quotes || [];
   return <main className={`tv-receiver-screen tv-receiver-${channel}${newsOnly ? ' tv-receiver-news-only' : ''}`}>
-    <header className="tv-receiver-heading"><div><h1>{receiverText(language, channel)}</h1><p>{receiverText(language, channel === 'allStocks' ? 'allHelp' : channel === 'kuwait' ? 'kuwaitHelp' : channel === 'shariaNews' ? 'shariaHelp' : 'newsHelp')}</p></div>
+    <header className="tv-receiver-heading"><div><h1>{receiverText(language, channel)}</h1><p>{receiverText(language, channel === 'allStocks' ? 'allHelp' : channel === 'kuwait' ? 'kuwaitHelp' : channel === 'forex' ? 'forexHelp' : channel === 'shariaNews' ? 'shariaHelp' : 'newsHelp')}</p></div>
       <div className="tv-receiver-actions">
         {newsOnly && <button type="button" data-tv-focus-key="news-topics" aria-haspopup="dialog" onClick={onNewsTopics}>{receiverText(language, 'newsTopics')}</button>}
         {channel === 'allStocks' && <label>{receiverText(language, 'market')}<select value={selected} onChange={event => { setSelected(event.target.value); setCursors({}); }}>
@@ -77,5 +79,7 @@ export default function TvReceiverScreen({ channel, language, now, revision, pla
       </section>
       {channel === 'kuwait' && <TvReceiverNews language={language} channel={channel} now={now} revision={revision} onStory={onStory} onRefresh={onRefresh} playing={playing}/>}
     </div>}
+    {!newsOnly && <TvPageTicker quotes={quotes} loading={snapshot.loading}/>}
   </main>;
 }
+

@@ -2,6 +2,8 @@
 import { useEffect, useMemo } from 'react';
 import type { TvLanguage, TvNews } from '@/lib/markets-tv/types';
 import { receiverNewsPath, receiverNewsPayload, TV_EXTRA_NEWS_CHANNELS, type TvReceiverNewsChannel } from '@/lib/markets-tv/newsReceiver';
+import { channelTickerPath } from '@/lib/markets-tv/channelTicker';
+import { TvPageTicker } from './TvPageTicker';
 import { receiverText } from '@/lib/markets-tv/receiver';
 import { tvQuoteTime, tvText } from '@/lib/markets-tv/i18n';
 import { useTvResource } from './useTvResource';
@@ -39,5 +41,7 @@ export function TvReceiverNews({ language, channel, now, revision, onStory, onRe
       {!feed.stories.length && (news.error || feed.invalid) ? <TvNewsStatus language={language} error={news.error || 'INVALID_FEED'} onRetry={onRefresh}/>
         : channel === 'kuwait' ? <TvHeadlines news={feed.stories} language={language} now={now} onStory={onStory} playing={playing}/> : <TvNewsDesk key={`${channel}:${language}`} news={feed.stories} language={language} now={now} onStory={onStory} playing={playing} onPaginationAvailable={onPaginationAvailable}/>}
     </>}
+    {channel !== 'kuwait' && <TvPageTicker path={channelTickerPath(channel, news.data)} loading={news.loading}/>}
   </aside>;
 }
+

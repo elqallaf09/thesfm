@@ -20,6 +20,7 @@ type FinnhubQuote = {
   c?: number;
   d?: number;
   dp?: number;
+  t?: number;
 };
 
 function devLog(message: string, meta: Record<string, unknown>) {
@@ -29,6 +30,7 @@ function devLog(message: string, meta: Record<string, unknown>) {
 }
 
 function numberOrNull(value: unknown) {
+  if (value === null || value === undefined || value === '') return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
 }
@@ -38,10 +40,13 @@ function normalizeFinnhubQuote(symbol: string, quote: FinnhubQuote): TechStockPr
   const change = numberOrNull(quote.d);
   const changePercent = numberOrNull(quote.dp);
   const available = price !== null && price > 0;
+  const seconds = numberOrNull(quote.t);
+  const asOf = seconds && seconds > 0 && seconds * 1000 <= Date.now() + 60000 ? new Date(seconds * 1000).toISOString() : null;
 
   return {
     symbol,
     price: available ? price : null,
+    asOf,
     change: available ? change : null,
     changePercent: available ? changePercent : null,
     source: 'Finnhub',

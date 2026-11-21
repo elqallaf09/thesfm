@@ -23,6 +23,7 @@ export async function GET() {
       ?? publicCatalogItem({ symbol: asset.symbol, name: asset.name, asset_type: asset.assetType, sector: asset.sector }, now);
     return {
       ...toResilientTickerItem(asset, pricing.prices?.get(asset.symbol)),
+      asOf: pricing.prices?.get(asset.symbol)?.asOf ?? null,
       sector: asset.sector,
       industry: asset.industry,
       assetType: asset.assetType,

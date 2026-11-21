@@ -10,6 +10,7 @@ import type { Language } from './src/api';
 import { t } from './src/copy';
 import { r } from './src/receiverCopy';
 import { Label, palette, Presentation } from './src/presentation';
+import { NativeTickerMotion } from './src/NativeTicker';
 import { NewsPanel, Pages, PortfolioPanel, SessionsPanel, StocksPanel } from './src/ReceiverPanels';
 import { TvButton } from './src/TvControls';
 import { useDevice } from './src/useDevice';
@@ -122,16 +123,17 @@ export default function App() {
         <TvButton disabled={!canRotate} onPress={refresh}>{t(language, 'refresh')}</TvButton>
         <TvButton disabled={!canRotate} selected={rotation && canRotate} onPress={() => { interact(); setRotation(value => !value); }}>{r(language, rotation && canRotate ? 'pause' : 'play')}</TvButton>
       </TVFocusGuideView>
-      <View style={s.content}>
+      <NativeTickerMotion.Provider value={rotation && !pairDialog && !guide}><View style={s.content}>
         {foreground && (destination === 'brief' ? <NativeBriefPanel revision={revision} page={page} changePage={changePage}/>
           : destination === 'map' ? <NativeAtlasPanel now={now} selected={region} onSelect={chooseRegion}/>
           : destination === 'account' ? <NativeAccountPanel/>
           : destination === 'allStocks' ? <StocksPanel key={`${destination}:${region || 'world'}`} kuwait={false} region={region} page={page} changePage={changePage} revision={revision}/>
+          : destination === 'forex' ? <StocksPanel key={destination} forex kuwait={false} page={page} changePage={changePage} revision={revision}/>
           : destination === 'sessions' ? <SessionsPanel page={page} changePage={changePage}/>
           : destination === 'investments' ? <PortfolioPanel token={device.token} page={page} changePage={changePage} revision={revision} revoked={device.forget}/>
           : destination === 'kuwait' && page % 2 === 0 ? <StocksPanel key={destination} kuwait page={Math.floor(page / 2)} changePage={value => changePage(value * 2 + 1)} revision={revision}/>
           : <NewsPanel channel={destination === 'kuwait' ? 'kuwait' : destination} page={page} changePage={changePage} revision={revision}/>)}
-      </View>
+      </View></NativeTickerMotion.Provider>
       <Label muted>{`${isTvReceiverChannel(destination) ? `${TV_RECEIVER_CHANNELS.indexOf(destination) + 1} / ${TV_RECEIVER_CHANNELS.length} · ` : ''}${destinationText}${canRotate ? ` · ${rotation ? '40s' : 'Ⅱ'}` : ''}`}</Label>
     </View>
     <Modal visible={guide || pairDialog} transparent onRequestClose={back} animationType="fade">
@@ -154,3 +156,5 @@ const s = StyleSheet.create({ root: { flex: 1, alignItems: 'center', justifyCont
   screen: { paddingHorizontal: 72, paddingVertical: 48, gap: 22 }, header: { alignItems: 'center', gap: 20 }, brand: { flex: 1, minWidth: 200 }, featureButton: { maxWidth: 280 }, logo: { width: 80, height: 80, resizeMode: 'contain' },
   navigation: { alignItems: 'center', gap: 18 }, content: { flex: 1, minHeight: 0 }, loading: { flex: 1, justifyContent: 'center', backgroundColor: '#06080C' },
   backdrop: { backgroundColor: 'rgba(0,0,0,0.85)' }, modalFrame: { alignItems: 'center', justifyContent: 'center' }, dialog: { width: 1320, borderWidth: 2, borderRadius: 24, padding: 44, gap: 22 }, guide: { gap: 12 } });
+
+
