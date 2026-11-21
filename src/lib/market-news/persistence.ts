@@ -343,9 +343,7 @@ export async function searchStoredNews(params: StoredNewsSearchParams = {}): Pro
     }
     const [storyResult, healthResult] = await Promise.all([stories, health.maybeSingle()]);
 
-    if (storyResult.error) {
-      return { stories: [], total: 0, lastSuccessfulUpdate: null, available: false };
-    }
+    if (storyResult.error) throw storyResult.error;
 
     return {
       stories: (storyResult.data ?? []).map(storedStoryFromRow).filter((story): story is ConsolidatedNewsStory => Boolean(story)),
