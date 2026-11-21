@@ -13,7 +13,7 @@ const items = changes.map((changePercent, index) => ({
   currency: 'USD', region: 'US', changePercent,
 }));
 
-async function openStocks(page: Page, theme: 'light' | 'dark', beforeAllStocks?: () => Promise<void>, directory = items) {
+async function openStocks(page: Page, theme: 'light' | 'dark', beforeAllStocks?: () => Promise<void>, directory = items, measured = false) {
   await page.addInitScript(theme => {
     localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({
       language: 'ar', theme, accent: 'champagne', displayMode: 'viewing', autoRotate: false,
@@ -58,11 +58,57 @@ async function openStocks(page: Page, theme: 'light' | 'dark', beforeAllStocks?:
   await openAndroidTvPackage(page);
   await beforeAllStocks?.();
   await chooseTvDestination(page, 'allStocks');
-  await expect(page.locator('.tv-all-stocks .tv-hall-row')).toHaveCount(6);
+  const rows = page.locator('.tv-all-stocks .tv-hall-row');
+  if (measured) await expect.poll(() => rows.count()).toBeGreaterThan(12);
+  else await expect(rows).toHaveCount(6);
   await expect(page.locator('.tv-all-stocks .tv-headline-story')).toHaveCount(8);
   await page.evaluate(() => document.fonts.ready);
   return { retainedAt };
 }
+
+test('portrait directory fills the available table, quotes both batches and keeps its place on rotation', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 954, height: 1625 });
+  const directory = Array.from({ length: 50 }, (_, index) => ({
+    ...items[0], name: 'Portrait test listing', symbol: index === 0 ? '000001' : index === 1 ? '00700' : `QA${index}`,
+    region: index === 0 ? 'TD_XSHE' : index === 1 ? 'TD_XHKG' : 'US',
+  }));
+  const requested: string[][] = [];
+  page.on('request', request => {
+    const url = new URL(request.url());
+    if (url.pathname === '/api/tv/snapshot' && url.searchParams.has('symbols')) {
+      requested.push(JSON.parse(url.searchParams.get('symbols')!));
+    }
+  });
+  await openStocks(page, 'dark', async () => {
+    await page.route('**/image-stock/000001.SZ.png', route => route.fulfill({
+      contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><circle cx="16" cy="16" r="12"/></svg>',
+    }));
+    await page.route('**/image-stock/0700.HK.png', route => route.abort());
+  }, directory, true);
+  const playback = page.locator('[data-tv-focus-key="stocks-playback"]');
+  if (await playback.getAttribute('aria-pressed') === 'true') await playback.click();
+  await expect(page.locator('.tv-stock-pagination')).toContainText('1 /');
+  const rows = page.locator('.tv-all-stocks .tv-hall-row');
+  await expect(rows.first().locator('.tv-asset-icon')).toHaveAttribute('data-logo-state', 'loaded');
+  await expect(rows.nth(1).locator('.tv-stock-mark svg')).toBeVisible();
+  await expect(rows.nth(1).locator('.tv-ticker-lettering')).toHaveText('00700');
+  const size = await rows.count();
+  await expect(page.locator('.tv-stock-coverage')).toContainText(`${size} / ${size}`);
+  expect(requested.every(batch => batch.length <= 12)).toBe(true);
+  const geometry = await tableGeometry(page);
+  expect(geometry.overflow).toEqual([]);
+  const last = await rows.last().boundingBox();
+  const panel = await page.locator('.tv-stock-page').boundingBox();
+  expect(Math.abs(panel!.y + panel!.height - last!.y - last!.height)).toBeLessThan(3);
+  await expect(page.locator('.tv-headline-band')).toBeInViewport({ ratio: 1 });
+  await expect(page.locator('.tv-quote-marquee')).toBeInViewport({ ratio: 1 });
+  await capturePresentation(page, testInfo, 'all-stocks-portrait');
+  await page.locator('[data-tv-focus-key="stocks-next"]').click();
+  await expect(rows.first().locator('.tv-hall-listing bdi')).toHaveText(directory[size].symbol);
+  await page.setViewportSize({ width: 1625, height: 954 });
+  await expect(rows).toHaveCount(6);
+  await expect(rows.locator('.tv-hall-listing bdi').filter({ hasText: new RegExp(`^${directory[size].symbol}$`) })).toHaveCount(1);
+});
 
 async function tableGeometry(page: Page) {
   return page.locator('.tv-all-stocks .tv-hall-table').evaluate(table => {
