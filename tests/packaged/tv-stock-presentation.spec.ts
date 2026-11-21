@@ -82,12 +82,17 @@ test('portrait directory fills the available table, quotes both batches and keep
       requested.push(JSON.parse(url.searchParams.get('listingKeys')!));
     }
   });
-  await openStocks(page, 'dark', async () => {
-    await page.route('**/image-stock/000001.SZ.png', route => route.fulfill({
-      contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><circle cx="16" cy="16" r="12"/></svg>',
-    }));
-    await page.route('**/image-stock/0700.HK.png', route => route.abort());
-  }, directory, true);
+  // Install both routes before the hall can warm either issuer image.
+  const logoRequests: string[] = [];
+  await page.route('**/image-stock/000001.SZ.png', route => {
+    logoRequests.push('000001.SZ');
+    return route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><circle cx="16" cy="16" r="12"/></svg>' });
+  });
+  await page.route('**/image-stock/0700.HK.png', route => {
+    logoRequests.push('0700.HK');
+    return route.fulfill({ status: 404, body: '' });
+  });
+  await openStocks(page, 'dark', undefined, directory, true);
   const playback = page.locator('[data-tv-focus-key="stocks-playback"]');
   if (await playback.getAttribute('aria-pressed') === 'true') await playback.click();
   await expect(page.locator('.tv-stock-pagination')).toContainText('1 /');
@@ -95,6 +100,7 @@ test('portrait directory fills the available table, quotes both batches and keep
   await expect(rows.first().locator('.tv-asset-icon')).toHaveAttribute('data-logo-state', 'loaded');
   await expect(rows.nth(1).locator('.tv-stock-mark svg')).toBeVisible();
   await expect(rows.nth(1).locator('.tv-ticker-lettering')).toHaveText('00700');
+  expect(logoRequests).toEqual(expect.arrayContaining(['000001.SZ', '0700.HK']));
   const size = await rows.count();
   await expect(page.locator('.tv-stock-coverage')).toContainText(`${size} / ${size}`);
   expect(requested.flat()).toEqual(expect.arrayContaining(directory.slice(0, size).map(item => item.listingKey)));
