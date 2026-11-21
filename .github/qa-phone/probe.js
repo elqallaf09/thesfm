@@ -1,6 +1,9 @@
 (async () => {
   const request = window.fetch.bind(window);
   const stamp = new Date().toISOString();
+  const apiCalls=[];
+  const faults=[];
+  window.addEventListener('error', e=>faults.push(String(e.message||e.type).slice(0,140)),true);
   const quotes = Array.from({length:12}, (_,i) => ({
     symbol:'QA'+i,name:'Company '+i,nameAr:'شركة '+i,currency:'USD',exchange:'US',price:0.21+i/100,
     source:'Simulator fixture',changePercent:2,status:'available',observedAt:stamp,receivedAt:stamp
@@ -9,8 +12,10 @@
     title:'خبر الشركة '+i,url:'https://example.com/story/'+i,source:'QA source',publishedAt:stamp}));
   sessionStorage.setItem('sfm-tv-welcome-shown','1');
   localStorage.setItem('sfm-markets-tv-settings-v1',JSON.stringify({language:'ar',marketIds:['US'],displayMode:'strips',autoRotate:false}));
+  if (window.__sfmTvIosLaunch) localStorage.setItem('sfm-tv-last-ios-welcome',window.__sfmTvIosLaunch);
   window.fetch=async (input,init)=>{
     const u=new URL(typeof input==='string'?input:input.url||input,location.href);
+    if(u.pathname.startsWith('/api/')) apiCalls.push(u.pathname);
     const reply=value=>Response.json(value);
     if(u.pathname==='/api/tv/catalog') return reply({markets:[{id:'US',group:'us',labelAr:'الأسواق الأمريكية',labelEn:'US stocks',labelFr:'Actions',count:24,status:'directory'}]});
     if(u.pathname==='/api/tv/snapshot') return reply({group:'us',market:'US',quotes,summary:quotes,total:12,available:12,directoryTotal:24,generatedAt:stamp});
@@ -19,24 +24,33 @@
     return request(input,init);
   };
   const wait=ms=>new Promise(r=>setTimeout(r,ms));
-  const until=async(fn,label)=>{for(let i=0;i<200;i++){const v=fn();if(v)return v;await wait(100);}throw Error(label);};
+  const until=async(fn,label)=>{for(let i=0;i<480;i++){const v=fn();if(v)return v;await wait(100);}throw Error(label);};
   const el=s=>document.querySelector(s);
   const click=async key=>(await until(()=>el('[data-tv-focus-key="'+key+'"]'),key)).click();
   try{
     await until(()=>window.ReactNativeWebView && window.__sfmTvIosLaunch && window.__sfmPhonePresentation,'SFM native bridge');
-    await until(()=>el('[data-tv-root]') && !el('.sfm-startup'), 'receiver ready');
-    if(!el('[data-tv-focus-key="menu:strips"]')) await click('menu-toggle');
-    await click('menu:strips');
+    const hydrated=()=>/\d{2}:\d{2}/.test(el('.tv-unified-clock strong')?.textContent || '');
+    await until(()=>hydrated() && !el('.sfm-startup') && !document.hidden,'hydrated and visible receiver');
+    const select=async key=>{
+      for(let i=0;i<4;i++){
+        if(!el('.tv-side-menu')) await click('menu-toggle');
+        await click('menu:'+key);
+        await wait(400);
+        if(!el('.tv-side-menu')) return;
+      }
+      throw Error('menu stayed open after '+key);
+    };
+    await select('strips');
     const market=await until(()=>el('.tv-market-strip-track[data-marquee=true]'),'market track');
     const position=e=>e.getBoundingClientRect().x;
     const before=position(market);await wait(1200);const marketDistance=Math.abs(position(market)-before);
     if(marketDistance<24)throw Error('Market travel '+marketDistance);
-    await click('menu-toggle');await click('menu:underDollarNews');
+    await select('underDollarNews');
     const wire=await until(()=>el('.tv-under-dollar-headlines .tv-headline-loop'),'headline track');
     const first=position(wire);await wait(1200);const headlineDistance=position(wire)-first;
     if(headlineDistance<20)throw Error('Arabic headline travel '+headlineDistance);
     if(wire.querySelectorAll('a').length!==27||!wire.textContent.includes('QA26'))throw Error('Incomplete feed');
     if(!el('.tv-quote-marquee'))throw Error('Missing separate price ticker');
     await request('/__result',{method:'POST',body:JSON.stringify({ok:true,marketDistance,headlineDistance,headlines:27,nativeBridge:true})});
-  }catch(e){await request('/__result',{method:'POST',body:JSON.stringify({ok:false,error:String(e),view:el('[data-tv-root]')?.dataset.tvView})});}
+  }catch(e){await request('/__result',{method:'POST',body:JSON.stringify({ok:false,error:String(e),view:el('[data-tv-root]')?.dataset.tvView,path:location.pathname,query:location.search,clock:el('.tv-unified-clock')?.innerText,menu:Boolean(el('.tv-side-menu')),tracks:document.querySelectorAll('.tv-market-strip-track').length,calls:apiCalls,hidden:document.hidden,faults})});}
 })();

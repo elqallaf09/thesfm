@@ -54,8 +54,9 @@ jobs:
       - name: Measure both strips inside SFM TV's WKWebView
         run: |
           pnpm install --frozen-lockfile
-          pnpm exec next dev --webpack -H 127.0.0.1 -p 3590 > "$RUNNER_TEMP/phone-next.log" 2>&1 &
-          node .github/qa-phone/proxy.cjs &
+          NEXT_BUILD_SKIP_CHECKS=1 pnpm build > "$RUNNER_TEMP/phone-build-next.log" 2>&1 || { tail -60 "$RUNNER_TEMP/phone-build-next.log"; exit 1; }
+          pnpm exec next start -H 127.0.0.1 -p 3590 > "$RUNNER_TEMP/phone-next.log" 2>&1 &
+          node .github/qa-phone/proxy.cjs > "$RUNNER_TEMP/phone-proxy.log" 2>&1 &
           for i in {1..60}; do curl -sf http://localhost:3583/tv -o /dev/null && break; sleep 2; done
           app=$(find "$RUNNER_TEMP/phone-build/Build/Products/Release-iphonesimulator" -maxdepth 1 -name '*.app' | head -1)
           xcrun simctl bootstatus "$SIMULATOR_UDID" -b
@@ -70,6 +71,8 @@ jobs:
         with:
           name: in-app-headline-proof
           path: |
+            ${{ runner.temp }}/phone-next.log
+            ${{ runner.temp }}/phone-proxy.log
             /tmp/sfm-native-result.json
             ${{ runner.temp }}/iphone-screen.png
           if-no-files-found: ignore

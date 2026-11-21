@@ -251,6 +251,18 @@ describe('special news data and independent quotes', () => {
     expect(verifiedUnderOne({ ...quote, price: 1 })).toBe(false);
   });
 
+  it('verifies news symbols beyond the quote-strip window and includes every eligible story', async () => {
+    const symbols = Array.from({ length: 26 }, (_, i) => 'SMALL' + i);
+    const stories = symbols.map(symbol => story('Nasdaq minimum bid notice for ' + symbol, { id: symbol, symbols: [symbol] }));
+    mocked.aggregate.mockResolvedValue({ stories, liveUpdatesAvailable: true });
+    mocked.quotes.mockImplementation(async (requested: string[], limit: number) => new Map(requested.slice(0, limit).map(symbol => [
+      symbol, { symbol, price: symbol === symbols[0] ? 1 : 0.75, currency: 'USD', assetType: 'EQUITY', available: true, asOf: new Date().toISOString() },
+    ])));
+    const payload = await (await GET(request('topic=stocks-under-1'))).json();
+    expect(payload.items.map((item: { ticker: string }) => item.ticker)).toEqual(symbols.slice(1));
+    expect(payload.tickerItems.length).toBeLessThanOrEqual(12);
+  });
+
   it('returns an under-$1 story after resolving its named company and verifying its quote', async () => {
     mocked.aggregate.mockResolvedValue({
       stories: [story('Example Global Limited Receives Nasdaq Minimum Bid Price Deficiency Notice')],
@@ -265,7 +277,7 @@ describe('special news data and independent quotes', () => {
     }]]));
     const payload = await (await GET(request('topic=stocks-under-1'))).json();
     expect(mocked.aggregate.mock.calls[0][1]).toMatchObject({ includeLiveProviders: true, forceExternal: false });
-    expect(mocked.quotes).toHaveBeenCalledWith(['EXMP']);
+    expect(mocked.quotes).toHaveBeenCalledWith(['EXMP'], 1);
     expect(payload.items).toHaveLength(1);
     expect(payload.items[0]).toMatchObject({ ticker: 'EXMP', price: 0.5, priceVerified: true });
   });
