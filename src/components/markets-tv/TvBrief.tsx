@@ -117,9 +117,10 @@ function BriefRankings({ stats, language, now, select }: QuoteProps & { stats: T
 }
 
 export function TvBrief({ snapshot, language, now, select, loading = false, error, onRefresh }: BriefProps) {
-  const [requestedView, setView] = useState<BriefView>('highlights');
+  const [requestedView, setView] = useState<BriefView | null>(null);
+  const benchmarks = snapshot?.market === 'brief' ? snapshot.quotes : undefined;
   const stats = briefMetrics([...(snapshot?.summary ?? []), ...(snapshot?.quotes ?? [])], now);
-  const view = requestedView === 'leaders' && stats.leaders.length < 2 ? 'sample' : requestedView;
+  const view = requestedView === 'leaders' && stats.leaders.length < 2 ? 'sample' : requestedView ?? (benchmarks ? 'sample' : 'highlights');
   const o = (key: Parameters<typeof obsText>[1]) => obsText(language, key);
   const pricesOnly = !stats.comparable && stats.available > 0;
   const savedOnly = pricesOnly && !stats.recent;
@@ -146,9 +147,9 @@ export function TvBrief({ snapshot, language, now, select, loading = false, erro
     </div>
     {stats.comparable > 0 && <BriefToolbar stats={stats} language={language} view={view} changeView={setView} select={select}/>}
     {!empty && <div id="tv-brief-results">
-      {stats.available > 0 && (pricesOnly || view !== 'highlights')
+      {(stats.available > 0 || benchmarks) && (pricesOnly || view !== 'highlights' || !stats.available)
         ? <TvBriefSample key={savedOnly ? 'saved' : view} mode={savedOnly ? 'saved' : view === 'leaders' ? 'leaders' : 'sample'}
-            stats={stats} language={language} now={now} select={select}/>
+            benchmarks={benchmarks} stats={stats} language={language} now={now} select={select}/>
         : <BriefRankings stats={stats} language={language} now={now} select={select}/>}
     </div>}
   </section>;

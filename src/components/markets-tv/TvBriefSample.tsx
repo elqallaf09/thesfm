@@ -1,11 +1,12 @@
 'use client';
 
 import type { CSSProperties } from 'react';
-import { tvQuotePrice } from '@/lib/markets-tv/i18n';
+import { tvGulfCashIndex } from '@/lib/markets-tv/gulfCashIndices';
+import { tvQuotePrice, tvText } from '@/lib/markets-tv/i18n';
 import { isTvExternalIndex } from '@/lib/markets-tv/indexChart';
 import { obsText, type TvBriefStats } from '@/lib/markets-tv/obsidian';
 import { tvQuoteMovement } from '@/lib/markets-tv/quote-presentation';
-import { tvSceneQuoteUnit } from '@/lib/markets-tv/scene-display';
+import { tvSceneHasPrice, tvSceneQuoteUnit } from '@/lib/markets-tv/scene-display';
 import { tvSceneQuoteKey } from '@/lib/markets-tv/scene-quotes';
 import type { TvLanguage, TvQuote } from '@/lib/markets-tv/types';
 import { TvAssetIcon } from './TvAssetIcon';
@@ -16,18 +17,18 @@ import { useTvBroadcastPage } from './useTvBroadcastPage';
 import { useTvTableSize } from './useTvTableSize';
 
 export function TvBriefIdentity({ quote, language }: { quote: TvQuote; language: TvLanguage }) {
-  const flag = isTvExternalIndex(quote.symbol) && quote.country && /^[a-z]{2}$/i.test(quote.country);
+  const flag = (isTvExternalIndex(quote.symbol) || tvGulfCashIndex(quote.symbol)) && quote.country && /^[a-z]{2}$/i.test(quote.country);
   return <span className="tv-brief-identity">
     {flag ? <span className="tv-brief-flag"><TvMarketFlag region={quote.country!}/></span> : <TvAssetIcon quote={quote}/>}
     <span><strong dir="auto">{language === 'ar' ? quote.nameAr : quote.name}</strong><bdi>{quote.displaySymbol || quote.symbol}</bdi></span>
   </span>;
 }
 
-export function TvBriefSample({ stats, language, now, select, mode }: {
+export function TvBriefSample({ stats, language, now, select, mode, benchmarks }: {
   stats: TvBriefStats; language: TvLanguage; now: number; select: (quote: TvQuote) => void;
-  mode: 'sample' | 'leaders' | 'saved';
+  mode: 'sample' | 'leaders' | 'saved'; benchmarks?: TvQuote[];
 }) {
-  const quotes = mode === 'leaders' ? stats.leaders : stats.saved;
+  const quotes = mode === 'leaders' ? stats.leaders : benchmarks ?? stats.saved;
   const pageSize = useTvTableSize();
   const pages = Math.ceil(quotes.length / pageSize);
   const { current, move } = useTvBroadcastPage(pages, false);
@@ -41,6 +42,10 @@ export function TvBriefSample({ stats, language, now, select, mode }: {
     <div className="tv-brief-sample-grid" style={{ '--brief-columns': Math.min(3, visible.length) } as CSSProperties}>
       {visible.map(quote => {
         const key = tvSceneQuoteKey(quote);
+        if (!tvSceneHasPrice(quote)) return <article key={key} className="tv-brief-sample-quote">
+          <TvBriefIdentity quote={quote} language={language}/>
+          <span className="tv-brief-excluded">{tvText(language, 'unavailable')}</span>
+        </article>;
         const comparable = stats.comparableKeys.has(key);
         const movement = tvQuoteMovement(quote.changePercent);
         const reason = movement.trend === 'unknown' ? 'changeMissing'

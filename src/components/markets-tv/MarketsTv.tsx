@@ -92,6 +92,8 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
   // The market brief always summarizes the global benchmark sample, even
   // after visiting an unpaired/empty watchlist or a rate-limited scene.
   const resourceScene = view === 'brief' ? 'overview' : scene;
+  const briefPath = '/api/tv/snapshot?group=global&market=brief&pageSize=10';
+  const scenePath = view === 'brief' ? briefPath : tvScenePath(resourceScene);
   const scenes = TV_SCENE_ORDER.filter(value => value !== 'watchlist' || token);
   const nextScene = scenes[(scenes.indexOf(scene) + 1) % scenes.length];
   const previousScene = scenes[scenes.indexOf(scene) > 0 ? scenes.indexOf(scene) - 1 : scenes.length - 1];
@@ -99,8 +101,8 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
   const overlayOpen = modal || menuOpen || accountChoice;
   const device = useTvResource<{ device: TvDevice; symbols: string[]; alerts: TvAlert[] }>(token ? '/api/tv/device' : null, 60000, token);
   const catalog = useTvResource<{ markets: TvMarket[] }>(ready && ((!viewing && view !== 'map') || dialog === 'markets' || dialog === 'instruments') ? '/api/tv/catalog' : null, 300000, '', revision);
-  const market = useTvResource<TvSnapshot>(ready && view !== 'map' && !stripsOnly && !viewing && !allStocks && !receiverScreen && view !== 'investments' && view !== 'sessions' && (group !== 'watchlist' || token) ? `/api/tv/snapshot?group=${group}&page=${page}&pageSize=${pageSize}${selectedMarket ? `&market=${selectedMarket}` : ""}` : null, 60000, group === 'watchlist' ? token : '', revision);
-  const sceneMarket = useTvResource<TvSnapshot>(ready && viewing && !allStocks && !receiverScreen && view !== 'investments' && view !== 'sessions' && (resourceScene !== 'watchlist' || token) ? tvScenePath(resourceScene) : null, resourceScene === 'assets' || resourceScene === 'crypto' ? 15000 : 30000, resourceScene === 'watchlist' ? token : '', revision);
+  const market = useTvResource<TvSnapshot>(ready && view !== 'map' && !stripsOnly && !viewing && !allStocks && !receiverScreen && view !== 'investments' && view !== 'sessions' && (group !== 'watchlist' || token) ? view === 'brief' && group === 'global' ? briefPath : `/api/tv/snapshot?group=${group}&page=${page}&pageSize=${pageSize}${selectedMarket ? `&market=${selectedMarket}` : ""}` : null, 60000, group === 'watchlist' ? token : '', revision);
+  const sceneMarket = useTvResource<TvSnapshot>(ready && viewing && !allStocks && !receiverScreen && view !== 'investments' && view !== 'sessions' && (resourceScene !== 'watchlist' || token) ? scenePath : null, resourceScene === 'assets' || resourceScene === 'crypto' ? 15000 : 30000, resourceScene === 'watchlist' ? token : '', revision);
   useTvScenePrefetch(ready && viewing && view === 'markets' && settings.autoRotate && !overlayOpen && online && nextScene !== 'watchlist' ? tvScenePath(nextScene) : null, 30000);
   const news = useTvResource<{ stories: TvNews[] }>(ready && view !== 'map' && !stripsOnly && !receiverScreen && view !== 'investments' && view !== 'sessions' ? `/api/tv/news?language=${settings.language}` : null, 180000, '', revision);
   const controls = useTvControls(root, (stripsOnly || viewing) && Boolean(settings.autoHideControls), overlayOpen);

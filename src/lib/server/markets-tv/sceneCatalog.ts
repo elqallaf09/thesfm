@@ -1,5 +1,6 @@
 import { TV_COMMODITIES } from '@/lib/markets-tv/commodityQuote';
 import 'server-only';
+import { TV_GULF_CASH_INDICES } from '@/lib/markets-tv/gulfCashIndices';
 import { GLOBAL_MARKET_STRIPS, inferStripCurrency } from '@/lib/market/globalMarketStrips';
 import type { TvGroup, TvScene } from '@/lib/markets-tv/types';
 import type { TvAsset } from './catalog';
@@ -103,6 +104,14 @@ const CRYPTO = ['BTC', 'ETH', 'SOL'].map(base => ({ symbol: `${base}/USDT`, name
   region: 'BINANCE', currency: 'USDT', baseCurrency: base, providerSymbol: `${base}USDT`, assetType: 'crypto' as const }));
 const FOREX = ['EUR/USD', 'GBP/USD', 'USD/JPY'].map(symbol => ({ symbol, name: symbol,
   region: 'FOREX', currency: symbol.split('/')[1], baseCurrency: symbol.split('/')[0], assetType: 'forex' as const }));
+
+/** The brief includes the local cash benchmarks alongside the six world indices. */
+export function tvBriefAssets(): TvAsset[] {
+  const [kuwait, dubai, qatar] = TV_GULF_CASH_INDICES;
+  const gulf = [kuwait, { symbol: '^TASI.SR', displaySymbol: 'TASI', country: 'SA',
+    name: 'Saudi Exchange · TASI', nameAr: 'تداول السعودية · تاسي' }, dubai, qatar];
+  return [...gulf.map(index => ({ ...index, assetType: 'index' as const })), ...configured('global_indices', 6)];
+}
 
 export const TV_SCENE_GROUP: Record<TvScene, TvGroup> = {
   overview: 'global', gulf: 'gulf', world: 'world', assets: 'commodities', crypto: 'crypto', watchlist: 'watchlist',
