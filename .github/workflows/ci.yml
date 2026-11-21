@@ -260,14 +260,13 @@ jobs:
     # manually dispatched authenticated-preview-validate.yml workflow after a
     # maintainer has reviewed the dependency changes.
     if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
-    # Do not allocate the shared E2E accounts until every unprivileged gate
-    # has already passed for this exact revision.
+    # Complete unprivileged checks before provisioning real user and admin sessions.
     needs: [typecheck, lint, i18n, launch-guards, test, migrations-clean-chain, build]
     runs-on: ubuntu-latest
     timeout-minutes: 75
-    # Shared secret-backed E2E accounts require one smoke session at a time.
+    # Main uses shared accounts. Each PR has its own migrated local database.
     concurrency:
-      group: thesfm-secret-backed-playwright-smoke
+      group: ${{ github.event_name == 'pull_request' && format('thesfm-smoke-{0}', github.run_id) || 'thesfm-secret-backed-playwright-smoke' }}
       cancel-in-progress: false
       # Keep ready revisions queued rather than replacing an older pending
       # smoke job whenever another pull request is updated.
@@ -289,16 +288,29 @@ jobs:
       - name: Install Chromium and WebKit
         timeout-minutes: 10
         run: bash .github/scripts/install-playwright-browsers.sh chromium webkit
+      - uses: supabase/setup-cli@v1
+        if: github.event_name == 'pull_request'
+        with:
+          version: 2.113.0
+      - name: Start the PR's isolated Supabase Auth and database
+        if: github.event_name == 'pull_request'
+        run: bash .github/scripts/start-disposable-supabase.sh smoke
+      - name: Provision distinct local user and admin accounts
+        id: local-auth
+        if: github.event_name == 'pull_request'
+        env:
+          SFM_RLS_DISPOSABLE: '1'
+        run: node tests/smoke/preview-auth-fixtures.mjs provision-local
       - name: Validate smoke environment
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          SUPER_ADMIN_EMAILS: ${{ secrets.SUPER_ADMIN_EMAILS }}
-          E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
-          E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
-          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
-          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ steps.local-auth.outputs.NEXT_PUBLIC_SUPABASE_URL || (github.event_name == 'push' && (secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL)) || '' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ steps.local-auth.outputs.NEXT_PUBLIC_SUPABASE_ANON_KEY || (github.event_name == 'push' && (secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY)) || '' }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ steps.local-auth.outputs.SUPABASE_SERVICE_ROLE_KEY || (github.event_name == 'push' && (secrets.SUPABASE_SERVICE_ROLE_KEY)) || '' }}
+          SUPER_ADMIN_EMAILS: ${{ steps.local-auth.outputs.SUPER_ADMIN_EMAILS || (github.event_name == 'push' && (secrets.SUPER_ADMIN_EMAILS)) || '' }}
+          E2E_USER_EMAIL: ${{ steps.local-auth.outputs.E2E_USER_EMAIL || (github.event_name == 'push' && (secrets.E2E_USER_EMAIL)) || '' }}
+          E2E_USER_PASSWORD: ${{ steps.local-auth.outputs.E2E_USER_PASSWORD || (github.event_name == 'push' && (secrets.E2E_USER_PASSWORD)) || '' }}
+          E2E_ADMIN_EMAIL: ${{ steps.local-auth.outputs.E2E_ADMIN_EMAIL || (github.event_name == 'push' && (secrets.E2E_ADMIN_EMAIL)) || '' }}
+          E2E_ADMIN_PASSWORD: ${{ steps.local-auth.outputs.E2E_ADMIN_PASSWORD || (github.event_name == 'push' && (secrets.E2E_ADMIN_PASSWORD)) || '' }}
         shell: bash
         run: |
           trim_whitespace() {
@@ -352,8 +364,8 @@ jobs:
         run: node scripts/verify-playwright-https-cookie.mjs
       - run: pnpm build
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ steps.local-auth.outputs.NEXT_PUBLIC_SUPABASE_URL || (github.event_name == 'push' && (secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL)) || '' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ steps.local-auth.outputs.NEXT_PUBLIC_SUPABASE_ANON_KEY || (github.event_name == 'push' && (secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY)) || '' }}
           NEXT_PUBLIC_SITE_URL: https://www.the-sfm.com
       - run: pnpm test:smoke
         env:
@@ -367,17 +379,17 @@ jobs:
           SFM_LOCAL_DASHBOARD_QA: '1'
           PLAYWRIGHT_TLS_CERT_PATH: ${{ runner.temp }}/playwright-tls/cert.pem
           PLAYWRIGHT_TLS_KEY_PATH: ${{ runner.temp }}/playwright-tls/key.pem
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ steps.local-auth.outputs.NEXT_PUBLIC_SUPABASE_URL || (github.event_name == 'push' && (secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL)) || '' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ steps.local-auth.outputs.NEXT_PUBLIC_SUPABASE_ANON_KEY || (github.event_name == 'push' && (secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY)) || '' }}
           NEXT_PUBLIC_SITE_URL: https://www.the-sfm.com
           # Server-only secrets: consumed by the app server the smoke run
           # boots, enabling investor/admin flows. Never echoed by tests.
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          SUPER_ADMIN_EMAILS: ${{ secrets.SUPER_ADMIN_EMAILS }}
-          E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
-          E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
-          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
-          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ steps.local-auth.outputs.SUPABASE_SERVICE_ROLE_KEY || (github.event_name == 'push' && (secrets.SUPABASE_SERVICE_ROLE_KEY)) || '' }}
+          SUPER_ADMIN_EMAILS: ${{ steps.local-auth.outputs.SUPER_ADMIN_EMAILS || (github.event_name == 'push' && (secrets.SUPER_ADMIN_EMAILS)) || '' }}
+          E2E_USER_EMAIL: ${{ steps.local-auth.outputs.E2E_USER_EMAIL || (github.event_name == 'push' && (secrets.E2E_USER_EMAIL)) || '' }}
+          E2E_USER_PASSWORD: ${{ steps.local-auth.outputs.E2E_USER_PASSWORD || (github.event_name == 'push' && (secrets.E2E_USER_PASSWORD)) || '' }}
+          E2E_ADMIN_EMAIL: ${{ steps.local-auth.outputs.E2E_ADMIN_EMAIL || (github.event_name == 'push' && (secrets.E2E_ADMIN_EMAIL)) || '' }}
+          E2E_ADMIN_PASSWORD: ${{ steps.local-auth.outputs.E2E_ADMIN_PASSWORD || (github.event_name == 'push' && (secrets.E2E_ADMIN_PASSWORD)) || '' }}
       - run: pnpm test:performance
         name: Playwright platform performance regression suite
         env:
@@ -385,15 +397,15 @@ jobs:
           PLAYWRIGHT_HTTPS_LOOPBACK: '1'
           PLAYWRIGHT_TLS_CERT_PATH: ${{ runner.temp }}/playwright-tls/cert.pem
           PLAYWRIGHT_TLS_KEY_PATH: ${{ runner.temp }}/playwright-tls/key.pem
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ steps.local-auth.outputs.NEXT_PUBLIC_SUPABASE_URL || (github.event_name == 'push' && (secrets.NEXT_PUBLIC_SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL)) || '' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ steps.local-auth.outputs.NEXT_PUBLIC_SUPABASE_ANON_KEY || (github.event_name == 'push' && (secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || vars.NEXT_PUBLIC_SUPABASE_ANON_KEY)) || '' }}
           NEXT_PUBLIC_SITE_URL: https://www.the-sfm.com
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          SUPER_ADMIN_EMAILS: ${{ secrets.SUPER_ADMIN_EMAILS }}
-          E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
-          E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
-          E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
-          E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ steps.local-auth.outputs.SUPABASE_SERVICE_ROLE_KEY || (github.event_name == 'push' && (secrets.SUPABASE_SERVICE_ROLE_KEY)) || '' }}
+          SUPER_ADMIN_EMAILS: ${{ steps.local-auth.outputs.SUPER_ADMIN_EMAILS || (github.event_name == 'push' && (secrets.SUPER_ADMIN_EMAILS)) || '' }}
+          E2E_USER_EMAIL: ${{ steps.local-auth.outputs.E2E_USER_EMAIL || (github.event_name == 'push' && (secrets.E2E_USER_EMAIL)) || '' }}
+          E2E_USER_PASSWORD: ${{ steps.local-auth.outputs.E2E_USER_PASSWORD || (github.event_name == 'push' && (secrets.E2E_USER_PASSWORD)) || '' }}
+          E2E_ADMIN_EMAIL: ${{ steps.local-auth.outputs.E2E_ADMIN_EMAIL || (github.event_name == 'push' && (secrets.E2E_ADMIN_EMAIL)) || '' }}
+          E2E_ADMIN_PASSWORD: ${{ steps.local-auth.outputs.E2E_ADMIN_PASSWORD || (github.event_name == 'push' && (secrets.E2E_ADMIN_PASSWORD)) || '' }}
       - name: Remove Playwright DOM error contexts
         if: ${{ !cancelled() }}
         shell: bash
@@ -406,6 +418,12 @@ jobs:
           path: test-results/
           if-no-files-found: warn
           retention-days: 7
+      - name: Stop the PR's disposable Supabase
+        if: always() && github.event_name == 'pull_request' && env.SFM_ISOLATION_DIR != ''
+        shell: bash
+        run: |
+          supabase stop --workdir "$SFM_ISOLATION_DIR" --no-backup
+          rm -f "$RUNNER_TEMP/sfm-local-status.json" "$RUNNER_TEMP/sfm-local-start.log"
 
   # Advisory by design: the shared GitHub-hosted runner produces a severe,
   # unpredictable first-Chrome-launch outlier that a deterministic server

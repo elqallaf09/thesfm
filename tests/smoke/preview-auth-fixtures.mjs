@@ -1,4 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
+import { createLocalOnlyFetch } from '../../scripts/economic-intelligence/local-rls-guard.mjs';
+import { exportLocalSmokeTarget, localSmokeTarget } from './local-auth-target.mjs';
 
 const fixtureMetadataKey = 'sfm_preview_auth_fixture';
 const fixtureVersion = 1;
@@ -17,17 +19,21 @@ const adminPermissions = {
 };
 
 const command = process.argv[2];
-if (!['provision', 'cleanup'].includes(command)) {
-  throw new Error('Preview auth fixture command must be provision or cleanup.');
+const local = command === 'provision-local';
+if (!local && !['provision', 'cleanup'].includes(command)) {
+  throw new Error('Unknown Auth fixture command.');
 }
 
-const config = readConfig();
-const admin = createClient(config.origin, config.serviceRoleKey, {
+const config = local ? localSmokeTarget() : readConfig();
+const clientOptions = {
   auth: { autoRefreshToken: false, persistSession: false },
-});
+  ...(local ? { global: { fetch: createLocalOnlyFetch(config.origin) } } : {}),
+};
+const admin = createClient(config.origin, config.serviceRoleKey, clientOptions);
 
-if (command === 'provision') {
+if (local || command === 'provision') {
   await provision();
+  if (local) exportLocalSmokeTarget(config);
 } else {
   await cleanup();
 }
@@ -237,9 +243,7 @@ async function verifyRole(user, credential) {
 }
 
 async function verifyCredentialLifecycle(user, credential) {
-  const auth = createClient(config.origin, config.serviceRoleKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
+  const auth = createClient(config.origin, config.anonKey || config.serviceRoleKey, clientOptions);
 
   const first = await auth.auth.signInWithPassword({ email: credential.email, password: credential.password });
   if (first.error || first.data.user?.id !== user.id || !first.data.session?.access_token) {
