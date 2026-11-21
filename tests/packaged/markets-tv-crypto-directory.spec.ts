@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { chooseTvDestination, openAndroidTvPackage } from './packageHarness';
+import { chooseTvDestination, openAndroidTvPackage, openTvMenu } from './packageHarness';
 import { TV_NEWS_TOPICS } from '../../src/lib/markets-tv/newsReceiver';
 
 test('crypto pages, topic images, currency flags and direct news access in the Arabic receiver', async ({ page }) => {
@@ -39,10 +39,16 @@ test('crypto pages, topic images, currency flags and direct news access in the A
   await expect(next).toBeFocused();
   await page.keyboard.press('Enter');
   await expect(rows.first()).toContainText('BTC/USDT');
-  await chooseTvDestination(page, 'newsChannels');
-  const topics = page.locator('.tv-news-topics button');
-  await expect(topics).toHaveCount(TV_NEWS_TOPICS.length);
-  await page.locator('[data-tv-focus-key="topic:cryptoNews"]').click();
+  await openTvMenu(page);
+  const drawer = page.locator('.tv-side-menu');
+  for (const topic of TV_NEWS_TOPICS) {
+    await expect(drawer.locator(`[data-tv-focus-key="menu:${topic}"]`)).toHaveCount(1);
+  }
+  const cryptoNews = drawer.locator('[data-tv-focus-key="menu:cryptoNews"]');
+  await cryptoNews.focus();
+  await page.keyboard.press('Enter');
+  await expect(drawer).toHaveCount(0);
+  await expect(page.locator('.tv-news-topics')).toHaveCount(0);
   await expect(page.locator('.tv-receiver-cryptoNews h1')).toHaveText('أخبار العملات الرقمية');
   await chooseTvDestination(page, 'forex');
   const flags = page.locator('.tv-receiver-forex .tv-pair-flags').first();

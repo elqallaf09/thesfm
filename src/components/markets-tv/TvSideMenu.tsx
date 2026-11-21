@@ -8,13 +8,14 @@ import {
 } from 'lucide-react';
 import { hallText } from '@/lib/markets-tv/hallText';
 import { tvText } from '@/lib/markets-tv/i18n';
+import { TV_EXTRA_NEWS_CHANNELS, type TvExtraNewsChannel } from '@/lib/markets-tv/newsReceiver';
 import { receiverText } from '@/lib/markets-tv/receiver';
 import type { TvChannel } from '@/lib/markets-tv/channels';
 import { tvSceneText } from '@/lib/markets-tv/scene-display';
 import type { TvLanguage } from '@/lib/markets-tv/types';
 import './side-menu.css';
 
-export type TvSideDestination = 'hall' | 'allStocks' | 'strips' | 'world' | 'gulf' | 'assets' | 'crypto' | 'forex' | 'kuwait' | 'news' | 'sessions' | 'watchlist' | 'investments' | 'brief' | 'map';
+export type TvSideDestination = 'hall' | 'allStocks' | 'strips' | 'world' | 'gulf' | 'assets' | 'crypto' | 'forex' | 'kuwait' | 'news' | 'sessions' | 'watchlist' | 'investments' | 'brief' | 'map' | 'technology' | TvExtraNewsChannel;
 
 type Props = {
   language: TvLanguage;
@@ -26,7 +27,6 @@ type Props = {
   onNavigate: (destination: TvSideDestination) => void;
   channels: TvChannel[];
   onSavedChannel: (channel: TvChannel) => void;
-  onNewsChannels: () => void;
   onCustomize: () => void;
   onSettings: () => void;
   onMyAccount: () => void;
@@ -45,7 +45,7 @@ export const tvMenuText = (language: TvLanguage, key: keyof typeof COPY.ar) => C
 
 type MenuItem = { key: string; label: string; icon: LucideIcon; destination?: TvSideDestination; action: () => void };
 
-export function TvSideMenu({ language, open, active, paired, deviceName, onClose, onNavigate, channels, onSavedChannel, onNewsChannels, onCustomize, onSettings, onMyAccount, onAccount, onSwitchAccount, onTools }: Props) {
+export function TvSideMenu({ language, open, active, paired, deviceName, onClose, onNavigate, channels, onSavedChannel, onCustomize, onSettings, onMyAccount, onAccount, onSwitchAccount, onTools }: Props) {
   const panel = useRef<HTMLElement>(null);
   const copy = COPY[language];
   const t = (key: Parameters<typeof tvText>[1]) => tvText(language, key);
@@ -63,12 +63,13 @@ export function TvSideMenu({ language, open, active, paired, deviceName, onClose
     route('crypto', tvSceneText(language, 'crypto'), Bitcoin),
     route('forex', receiverText(language, 'forex'), DollarSign),
     route('news', copy.news, Newspaper),
-    { key: 'menu:newsChannels', label: receiverText(language, 'newsChannels'), icon: Tv, action: onNewsChannels },
     route('sessions', receiverText(language, 'sessions'), Clock3),
     route('watchlist', tvSceneText(language, 'watchlist'), Star),
     route('investments', t('investments'), WalletCards),
     route('brief', t('brief'), Newspaper),
     route('map', t('map'), Map),
+    route('technology', receiverText(language, 'technology'), Tv),
+    ...TV_EXTRA_NEWS_CHANNELS.map(channel => route(channel, receiverText(language, channel), Tv)),
     ...channels.map(channel => ({ key: `saved:${channel.id}`, label: channel.name, icon: Tv, action: () => onSavedChannel(channel) })),
     { key: 'customize', label: t('customizeMarkets'), icon: SlidersHorizontal, action: onCustomize },
     { key: 'settings', label: t('settings'), icon: Settings2, action: onSettings },

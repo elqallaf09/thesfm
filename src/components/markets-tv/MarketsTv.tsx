@@ -258,7 +258,7 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
   }
   const activeMenu: TvSideDestination | undefined = stripsOnly ? 'strips' : allStocks || view === 'allStocks' ? 'allStocks'
     : view === 'markets' ? scene === 'overview' ? 'hall' : scene
-    : view === 'sessions' || view === 'investments' || view === 'kuwait' || view === 'brief' || view === 'map' ? view : view === 'forex' ? 'forex' : receiverScreen ? 'news' : undefined;
+    : view;
   function toggleScenePlayback() {
     setSettings(value => view === 'sessions' || view === 'investments' || receiverScreen
       ? { ...value, sessionAutoRotate: !pagePlaying } : { ...value, autoRotate: !value.autoRotate }); interact();
@@ -367,7 +367,7 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
       onAdd={() => { clearAccountContext(); setAccountChoice(false); openPair(); }}/></Suspense>}
     <TvHeader language={settings.language} ready={ready} hidden={controls.hidden} menuOpen={menuOpen} openMenu={() => { controls.wake(); setMenuOpen(true); }}/>
     <TvSideMenu language={settings.language} open={menuOpen} active={activeMenu} paired={Boolean(token)} deviceName={device.data?.device.name}
-      onClose={() => setMenuOpen(false)} onNavigate={chooseMenu} onNewsChannels={() => openMenuDialog('newsTopics')} channels={channels} onSavedChannel={applySavedChannel} onCustomize={() => openMenuDialog('markets')}
+      onClose={() => setMenuOpen(false)} onNavigate={chooseMenu} channels={channels} onSavedChannel={applySavedChannel} onCustomize={() => openMenuDialog('markets')}
       onSettings={() => openMenuDialog('settings')} onMyAccount={() => openMenuDialog('account')} onSwitchAccount={() => { clearAccountContext(); setAccountChoice(true); setMenuOpen(false); }} onAccount={() => openMenuDialog(token ? 'device' : 'pair')} onTools={() => openMenuDialog('tools')}/>
     {stripsOnly ? <>
 

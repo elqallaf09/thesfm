@@ -14,7 +14,6 @@ export function nextTvReceiverChannel(view: TvView, step: number): TvReceiverCha
 const COPY = {
   ...TV_NEWS_LABELS,
   news: ['أخبار الأسواق', 'Market news', 'Actualités des marchés'],
-  newsChannels: ['قنوات الأخبار', 'News channels', 'Chaînes d’actualité'],
   newsTopics: ['أقسام الأخبار', 'News sections', 'Rubriques d’actualité'],
   allStocks: ['كل الأسهم', 'All stocks', 'Toutes les actions'],
   technology: ['أخبار أسهم التقنية', 'Technology stocks news', 'Actualités des valeurs technologiques'],
