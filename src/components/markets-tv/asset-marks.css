@@ -1,5 +1,5 @@
 .tv-screen .tv-identity-mark { position: relative; isolation: isolate; }
-.tv-screen .tv-asset-icon.tv-identity-mark[data-index-mark] { background: var(--tv-mark-color); color: white; }
+.tv-screen .tv-asset-icon.tv-identity-mark[data-index-mark] { background: var(--tv-panel2); color: var(--tv-text); }
 .tv-index-lettering { display: grid; justify-items: center; line-height: 1; gap: .06em; font-family: var(--font-data), monospace; }
 .tv-index-lettering > span { font-size: .42em; font-weight: 700; }
 .tv-screen .tv-index-lettering > strong { font: 700 .83em/1 var(--font-data), monospace; color: inherit; }
@@ -7,4 +7,9 @@
 .tv-ticker-lettering[data-long=true] { font-size: .37em; }
 .tv-screen .tv-identity-mark > img.tv-mark-image { position: absolute; inset: 0; margin: auto; opacity: 0; object-fit: contain; }
 .tv-screen .tv-identity-mark[data-logo-state=loaded] > img.tv-mark-image { opacity: 1; }
-.tv-screen .tv-identity-mark[data-issuer=svix][data-logo-state=loaded] { background: #25384b; }
+.tv-screen .tv-identity-mark[data-issuer=svix][data-logo-state=loaded] { background: var(--tv-news-brand-background); }
+
+.tv-pair-flags { display: flex; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: center; gap: 3%; }
+.tv-pair-flags > span { display: grid; place-items: center; width: 72%; height: 40%; }
+.tv-screen .tv-pair-flags .tv-market-flag { display: block; height: 100%; width: auto; aspect-ratio: 4 / 3; border-radius: 0; }
+.tv-pair-flags b { font: 700 .5em/1 var(--font-data), monospace; }

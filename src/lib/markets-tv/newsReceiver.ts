@@ -49,14 +49,17 @@ export const TV_NEWS_LABELS = {
   cyclicalNews: ["أخبار الأسهم الدورية", "Cyclical stocks news", "Actualités des valeurs cycliques"],
   incomeNews: ["أخبار أسهم الدخل المرتفع", "High income stocks news", "Actualités des valeurs de rendement"],
 } as const;
-export type TvReceiverNewsChannel = TvExtraNewsChannel | 'technology' | 'kuwait';
+export const TV_NEWS_TOPICS = ['news', 'technology', ...TV_EXTRA_NEWS_CHANNELS] as const;
+export type TvReceiverNewsChannel = typeof TV_NEWS_TOPICS[number] | 'kuwait';
 export function isTvExtraNewsChannel(value: unknown): value is TvExtraNewsChannel {
   return typeof value === 'string' && Object.hasOwn(TV_NEWS_FEEDS, value);
 }
 export function receiverNewsPath(channel: TvReceiverNewsChannel, language: TvLanguage) {
+  if (channel === 'news') return `/api/tv/news?language=${language}`;
   if (!isTvExtraNewsChannel(channel)) return `/api/tv/news?language=${language}&channel=${channel}`;
+  if (channel === 'shariaNews') return `/api/sharia-stocks/news?lang=${language}&limit=24&view=headlines&scope=compliant`;
   const path = TV_NEWS_FEEDS[channel];
-  const headlinesOnly = /^\/api\/[a-z]+-stocks\/news$/.test(path) || path === '/api/europe-news';
+  const headlinesOnly = /^\/api\/[a-z]+-stocks\/news$/.test(path) || path === '/api/europe-news' || channel === 'cryptoNews';
   return `${path}${path.includes('?') ? '&' : '?'}lang=${language}&limit=24${headlinesOnly ? '&view=headlines' : ''}`;
 }
 function record(value: unknown): Record<string, unknown> {
@@ -70,7 +73,7 @@ export function receiverNewsPayload(value: unknown, channel: TvReceiverNewsChann
   const rows = extra ? body.items : body.stories;
   const topic = extra ? new URL(TV_NEWS_FEEDS[channel], 'https://www.the-sfm.com').searchParams.get('topic') : null;
   const category = extra ? TV_NEWS_FEEDS[channel].match(/^\/api\/([a-z]+)-stocks\/news$/)?.[1] : null;
-  const valid = Array.isArray(rows) && (extra ? (!topic || body.topic === topic) && (!category || body.category === category) : body.channel === channel);
+  const valid = Array.isArray(rows) && (extra ? (!topic || body.topic === topic) && (!category || body.category === category) : body.channel === (channel === 'news' ? 'all' : channel));
   const seen = new Set<string>();
   const stories: TvNews[] = valid ? rows.flatMap(value => {
     const item = record(value), url = typeof item.url === 'string' ? safeTvUrl(item.url) : null;
@@ -78,6 +81,7 @@ export function receiverNewsPayload(value: unknown, channel: TvReceiverNewsChann
     const source = typeof item.source === 'string' ? item.source : item.sourceName;
     const publishedAt = date(item.publishedAt);
     if (!url || typeof title !== 'string' || !title.trim() || typeof source !== 'string' || !source.trim() || !publishedAt || seen.has(url)) return [];
+    if (channel === 'shariaNews' && item.shariahStatus !== 'compliant') return [];
     seen.add(url);
     const imageUrl = [item.imageUrl, item.image, item.thumbnail]
       .map(tvNewsPhotoUrl).find(Boolean);
@@ -89,3 +93,4 @@ export function receiverNewsPayload(value: unknown, channel: TvReceiverNewsChann
     partial: body.partialFailure === true, stored: body.storedFallbackUsed === true,
     updatedAt: date(body.lastSuccessfulUpdate) ?? date(body.generatedAt) };
 }
+

@@ -1,4 +1,7 @@
 import { aggregateFinancialNews } from '@/lib/market-news/engine';
+import { shariaHeadlineStock } from './shariaHeadlineStock';
+import { shariaIssuerProviders } from './shariaIssuerProviders';
+import type { NewsFetchParams } from '@/lib/market-news/types';
 import { safePublicHttpUrl } from '@/lib/market-news/security';
 import type { ConsolidatedNewsStory } from '@/lib/market-news/types';
 import { fetchStockPrices, type TechStockPrice } from '@/lib/market/fetchStockPrices';
@@ -28,6 +31,7 @@ export type StockCategoryNewsItem = {
   isTranslated?: boolean;
   translationSource?: string;
   companyName: string;
+  reportedCompanyNames?: string[];
   ticker: string;
   sector: StockCategoryFilterKey;
   sectors: StockCategoryFilterKey[];
@@ -150,6 +154,7 @@ async function categoryUniverse(config: NonNullable<ReturnType<typeof getStockCa
 
 export type CategoryNewsOptions = {
   headlinesOnly?: boolean;
+  screenedSymbols?: ReadonlySet<string>;
   schedulePersistence?: (task: () => Promise<void>) => void;
 };
 export async function fetchStockCategoryNews(categoryInput: string | null | undefined, languageInput?: string | null, options: CategoryNewsOptions = {}) {
@@ -159,33 +164,42 @@ export async function fetchStockCategoryNews(categoryInput: string | null | unde
   const language = normalizeNewsLanguage(languageInput);
   const apiKey = process.env.FINNHUB_API_KEY?.trim();
   const universe = await categoryUniverse(config);
-  const newsStocks = universe.stocks.slice(0, NEWS_SYMBOL_LIMIT);
+  const screened = options.screenedSymbols;
+  const stocks = config.id === 'sharia' && screened ? universe.stocks.filter(stock => screened.has(stock.symbol)) : universe.stocks;
+  const newsStocks = stocks.slice(0, NEWS_SYMBOL_LIMIT);
   const priceStocks = options.headlinesOnly ? [] : newsStocks.slice(0, PRICE_SYMBOL_LIMIT);
 
-  const [newsResult, priceResult] = await Promise.allSettled([
-    aggregateFinancialNews({
+  const issuerNews = config.id === 'sharia';
+  const params: NewsFetchParams = {
+    symbols: newsStocks.map(stock => stock.symbol),
+    ...(issuerNews ? { strictEntityFilter: true } : {
       query: config.rssQuery,
-      symbols: newsStocks.map(stock => stock.symbol),
       companyNames: newsStocks.flatMap(stock => [stock.name, ...(stock.aliases ?? [])]),
-      marketCodes: ['US'],
       countries: ['US'],
       sectors: config.filters.filter(filter => filter.key !== 'all').map(filter => filter.key),
-      assetTypes: ['equity', 'etf'],
-      from: dateDaysAgo(45),
-      to: new Date().toISOString().slice(0, 10),
-      language,
-      limit: 240,
-    }, { page: 1, pageSize: 80, sort: 'importance',
-      ...(options.headlinesOnly ? { providerBudgetMs: 6500, schedulePersistence: options.schedulePersistence } : {}) }),
+    }),
+    marketCodes: ['US'],
+    assetTypes: ['equity', 'etf'],
+    from: dateDaysAgo(45),
+    to: new Date().toISOString().slice(0, 10),
+    language,
+    limit: 240,
+  };
+  const [newsResult, priceResult] = await Promise.allSettled([
+    newsStocks.length ? aggregateFinancialNews(params, {
+      page: 1, pageSize: 80, sort: issuerNews ? 'latest' : 'importance',
+      ...(issuerNews ? { providers: shariaIssuerProviders(params) } : {}),
+      ...(options.headlinesOnly ? { providerBudgetMs: 6500, schedulePersistence: options.schedulePersistence } : {}),
+    }) : null,
     options.headlinesOnly ? Promise.resolve(new Map<string, TechStockPrice>()) : fetchStockPrices(priceStocks, apiKey),
   ]);
 
-  const aggregated = newsResult.status === 'fulfilled'
+  const aggregated = newsResult.status === 'fulfilled' && newsResult.value
     ? newsResult.value
     : {
       stories: [] as ConsolidatedNewsStory[],
       providerCoverage: [],
-      partialFailure: false,
+      partialFailure: newsResult.status === 'rejected',
       liveUpdatesAvailable: false,
       storedFallbackUsed: false,
       lastUpdated: null,
@@ -194,8 +208,10 @@ export async function fetchStockCategoryNews(categoryInput: string | null | unde
   const prices = priceResult.status === 'fulfilled' ? priceResult.value : new Map<string, TechStockPrice>();
   const stockBySymbol = new Map(newsStocks.map(stock => [stock.symbol.toUpperCase(), stock]));
 
-  const normalizedItems: StockCategoryNewsItem[] = aggregated.stories.map(story => {
-    const stock = story.symbols.map(symbol => stockBySymbol.get(symbol.toUpperCase())).find(Boolean) ?? null;
+  const normalizedItems = aggregated.stories.flatMap((story): StockCategoryNewsItem[] => {
+    const stock = issuerNews ? shariaHeadlineStock(story, stockBySymbol)
+      : story.symbols.map(symbol => stockBySymbol.get(symbol.toUpperCase())).find(Boolean);
+    if (issuerNews && !stock) return [];
     const storySectors = unique(story.sectors.filter(sector => config.filters.some(filter => filter.key === sector)));
     const fallbackSector = config.filters.find(filter => filter.key !== 'all')?.key ?? 'general';
     const sectors = unique([...(stock?.filters ?? []), stock?.filter ?? '', ...storySectors]);
@@ -203,7 +219,7 @@ export async function fetchStockCategoryNews(categoryInput: string | null | unde
     const price = stock ? prices.get(stock.symbol) : undefined;
     const publishedTimestamp = new Date(story.publishedAt).getTime();
 
-    return {
+    return [{
       id: story.id,
       headline: story.title,
       title: story.title,
@@ -211,6 +227,7 @@ export async function fetchStockCategoryNews(categoryInput: string | null | unde
       titleOriginal: story.title,
       summaryOriginal: story.summary ?? '',
       languageOriginal: story.originalLanguage,
+      ...(issuerNews ? { reportedCompanyNames: story.companyNames } : {}),
       companyName: stock?.name ?? story.companyNames[0] ?? `${config.id} stocks`,
       ticker: stock?.symbol ?? story.symbols[0] ?? config.id.toUpperCase(),
       sector,
@@ -248,7 +265,7 @@ export async function fetchStockCategoryNews(categoryInput: string | null | unde
       marketCodes: story.marketCodes,
       exchangeCodes: story.exchangeCodes,
       ...(config.shariaCaution ? { shariaStatus: 'unclassified' as const } : {}),
-    };
+    }];
   });
 
   // TV displays original headlines and source times; unused prices and bulk

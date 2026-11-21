@@ -1,5 +1,5 @@
 import type { TvLanguage, TvQuote } from './types';
-import { quoteStatus } from './quotes';
+import { quoteStatus } from './quote-status';
 import { tvSceneHasPrice } from './scene-display';
 import { tvSceneQuoteKey } from './scene-quotes';
 const copy = {

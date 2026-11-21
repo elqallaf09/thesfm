@@ -3,6 +3,30 @@
 .tv-screen .tv-receiver-heading h1{font-size:1.35em;line-height:1.35;margin:0}
 .tv-receiver-heading p{font-size:max(13px,.75em);color:var(--tv-muted);margin:.15em 0;line-height:1.4}
 .tv-receiver-actions{display:flex;align-items:center;gap:.4em}
+.tv-screen .tv-news-topics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12em), 1fr));
+  gap: .5em;
+  overflow-y: auto;
+  padding: .35em;
+}
+.tv-screen .tv-news-topics button { white-space: normal; min-height: 2.75em; }
+.tv-screen .tv-news-topics button[aria-pressed=true] { border-color: var(--tv-accent); }
+.tv-screen .tv-receiver-news-only .tv-news-status {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .75em;
+  margin: 0;
+  padding: 1em;
+  color: var(--tv-text);
+  font-size: clamp(24px, 2.2vw, 56px);
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: center;
+}
 .tv-receiver-actions label{display:flex;align-items:center;gap:.4em;font-size:max(13px,.8em)}
 .tv-receiver-actions select{max-width:14em;background:var(--tv-panel);color:var(--tv-text);border:1px solid var(--tv-line);border-radius:var(--radius-sm);padding:.35em}
 .tv-screen .tv-receiver-actions button,.tv-screen .tv-receiver-market>header button{padding:.3em;min-height:1.9em;min-width:1.9em}
@@ -30,3 +54,7 @@
 .tv-screen .tv-receiver-news .tv-scene-headlines{flex:1;font-size:1em}
 @media(min-width:761px) and (max-height:650px){.tv-receiver-screen{font-size:16px;gap:.35em}.tv-receiver-heading p{max-width:43em}.tv-screen .tv-receiver-screen .tv-receiver-quotes .tv-market-strip-item{padding:.4em}.tv-receiver-kuwait .tv-receiver-content{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)}.tv-screen .tv-receiver-kuwait .tv-strip-price{font-size:1.4em}.tv-screen .tv-receiver-nav button{padding:.25em .4em}}
 @media(max-width:760px){.tv-receiver-screen{min-height:650px;padding:.5em;font-size:16px}.tv-receiver-heading{flex-wrap:wrap}.tv-receiver-actions{width:100%;flex-wrap:wrap}.tv-receiver-kuwait .tv-receiver-content{grid-template-columns:minmax(0,1fr)}.tv-receiver-quotes{grid-auto-rows:minmax(170px,auto)}.tv-receiver-news{min-height:360px}.tv-receiver-screen .tv-strip-price{font-size:1.4em}}
+
+.tv-screened-news-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.6em;text-align:center;color:var(--tv-muted)}
+.tv-screened-news-empty p{margin:0;font-size:1em}
+

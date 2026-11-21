@@ -7,6 +7,8 @@ import type { TvPortfolioPosition, TvPortfolioSnapshot } from '@/lib/markets-tv/
 import { metalFromSymbol } from '@/lib/metalVisuals';
 import { portfolioText, type PortfolioTextKey } from '@/lib/markets-tv/portfolioCopy';
 import { tvQuoteTime, tvText } from '@/lib/markets-tv/i18n';
+import { tvSceneQuoteKey } from '@/lib/markets-tv/scene-quotes';
+import { TvPageTicker } from './TvPageTicker';
 import { useTvResource } from './useTvResource';
 import { TvBroadcastPager } from './TvBroadcastPager';
 import { useTvBroadcastPage } from './useTvBroadcastPage';
@@ -132,6 +134,10 @@ export default function TvInvestments({ token, language, revision, now, onPair, 
   const data = resource.data, expired = resource.errorStatus === 401 || resource.errorStatus === 403;
   const holdings = data?.positions;
   const positions = useMemo(() => holdings?.filter(item => assetClass === 'all' || item.assetClass === assetClass) || [], [holdings, assetClass]);
+  const tickerQuotes = useMemo(() => {
+    const quotes = positions.flatMap(position => position.marketQuote ? [position.marketQuote] : []);
+    return Array.from(new Map(quotes.map(quote => [tvSceneQuoteKey(quote), quote])).values());
+  }, [positions]);
   const detail = token && !expired && selected?.token === token ? data?.positions.find(item => item.id === selected.id) : null;
   const allocation = data?.allocation || [], allocationPages = Math.max(1, Math.ceil(allocation.length / 4));
   const allocationPage = useTvBroadcastPage(allocationPages, autoRotate && !expired && !suspended && !detail);
@@ -185,6 +191,7 @@ export default function TvInvestments({ token, language, revision, now, onPair, 
                 {allocation.length > 0 && (data.totalValue ?? 0) > 0 ? <div className="tv-allocation-list">{allocation.slice(allocationPage.current * 4, (allocationPage.current + 1) * 4).map(item => <div key={item.assetClass}><div><span>{text(item.assetClass as PortfolioTextKey)}</span><bdi>{((item.amount / data.totalValue!) * 100).toFixed(1)}%</bdi></div><meter min={0} max={data.totalValue!} value={item.amount} aria-label={text(item.assetClass as PortfolioTextKey)}/><bdi>{money(item.amount, data.currency)} {data.currency}</bdi></div>)}</div> : <p>{text('unavailable')}</p>}
               </aside>
             </div>}
+            {tickerQuotes.length > 0 && <TvPageTicker paused={Boolean(detail)} quotes={tickerQuotes}/>}
             <footer className="tv-portfolio-footer"><span>{text('sync')}: <time dateTime={data.generatedAt} dir="ltr">{tvQuoteTime(data.generatedAt, language, now)}</time></span><p>{text('note')}</p></footer>
             {detail && <PortfolioDetails position={detail} currency={data.currency} language={language} now={now} close={closeDetails}/>}
           </>}

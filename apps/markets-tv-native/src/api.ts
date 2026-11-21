@@ -1,34 +1,44 @@
+import type { TvQuote } from '../../../src/lib/markets-tv/types';
+
 export type Language = 'ar' | 'en' | 'fr';
-export type Scene = 'overview' | 'gulf' | 'world' | 'assets';
+export type Scene = 'overview' | 'gulf' | 'world' | 'assets' | 'crypto';
 export type Quote = {
   symbol: string; name: string; nameAr: string; price: number | null; currency: string | null;
   source: string | null; observedAt: string | null; changePercent: number | null;
   status: string; exchange?: string; issue?: string; changeBasis?: string; delayType?: string;
+  receivedAt?: string | null; listingKey?: string; displaySymbol?: string; country?: string | null;
+  observation?: TvQuote['observation']; retryAt?: string | null;
 };
-export type Snapshot = { scene: Scene; summary: Quote[]; quotes: Quote[]; retryAt: string | null };
-export const SCENES: Scene[] = ['overview', 'gulf', 'world', 'assets'];
+export type Snapshot = { scene: Scene; summary: Quote[]; quotes: Quote[]; retryAt: string | null; generatedAt: string | null };
+export const SCENES: Scene[] = ['overview', 'gulf', 'world', 'assets', 'crypto'];
 export const ORIGIN = 'https://www.the-sfm.com';
-const groups: Record<Scene, string> = { overview: 'global', gulf: 'gulf', world: 'world', assets: 'commodities' };
+const groups: Record<Scene, string> = { overview: 'global', gulf: 'gulf', world: 'world', assets: 'commodities', crypto: 'crypto' };
 const object = (v: unknown): Record<string, unknown> => v && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, unknown> : {};
 const text = (v: unknown) => typeof v === 'string' && v.trim() ? v : null;
 const numeric = (v: unknown) => typeof v === 'number' && Number.isFinite(v) ? v : null;
+const timestamp = (v: unknown) => text(v) && Number.isFinite(Date.parse(String(v))) ? String(v) : null;
 export const snapshotPath = (scene: Scene) => `/api/tv/snapshot?group=${groups[scene]}&scene=${scene}&pageSize=10`;
 export function parseQuote(input: unknown): Quote | null {
   const row = object(input), symbol = text(row.symbol);
   if (!symbol) return null;
   const price = numeric(row.price), source = text(row.source), observedAt = text(row.observedAt);
   const valid = price !== null && price > 0 && source !== null && observedAt !== null && Number.isFinite(Date.parse(observedAt));
+  const observation = object(row.observation), precision = observation.precision;
   return { symbol, name: text(row.name) || symbol, nameAr: text(row.nameAr) || text(row.name) || symbol,
     price: valid ? price : null, source: valid ? source : null, observedAt: valid ? observedAt : null,
     currency: text(row.currency), changePercent: valid ? numeric(row.changePercent) : null,
     status: valid ? text(row.status) || 'unknown_delay' : 'unavailable', exchange: text(row.exchange) || undefined, issue: text(row.issue) || undefined,
-    changeBasis: text(row.changeBasis) || undefined, delayType: text(row.delayType) || undefined };
+    changeBasis: text(row.changeBasis) || undefined, delayType: text(row.delayType) || undefined,
+    receivedAt: timestamp(row.receivedAt), listingKey: text(row.listingKey) || undefined,
+    displaySymbol: text(row.displaySymbol) || undefined, country: text(row.country), retryAt: timestamp(row.retryAt),
+    observation: precision === 'instant' || precision === 'date' || precision === 'unknown'
+      ? { precision, marketOpen: typeof observation.marketOpen === 'boolean' ? observation.marketOpen : null } : undefined };
 }
 export function parseSnapshot(input: unknown, scene: Scene): Snapshot {
   const row = object(input);
   if (row.scene !== scene || !Array.isArray(row.quotes) || !Array.isArray(row.summary)) throw new Error('INVALID_SNAPSHOT');
   const quotes = (values: unknown[]) => values.slice(0, 16).flatMap(v => { const q = parseQuote(v); return q ? [q] : []; });
-  return { scene, summary: quotes(row.summary), quotes: quotes(row.quotes), retryAt: text(row.retryAt) };
+  return { scene, summary: quotes(row.summary), quotes: quotes(row.quotes), retryAt: timestamp(row.retryAt), generatedAt: timestamp(row.generatedAt) };
 }
 export class SnapshotError extends Error {
   constructor(message: string, readonly retryAfterMs = 0) { super(message); }

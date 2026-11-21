@@ -21,3 +21,10 @@ SFM supplies its own text badges when these images are unavailable.
 Shanghai marks are matched to their SSE instrument pages (600370, 603359,
 603378) and [JD Capital](https://www.jdcapital.com/en) (600053).
 Fallback image requests to FMP retain the .SS or .NS exchange suffix.
+
+## Broadcast instrument artwork
+
+- Crypto marks in `crypto/` are from [Cryptocurrency Icons](https://github.com/spothq/cryptocurrency-icons/tree/master/svg/color), CC0 1.0.
+- The euro-area flag uses [flag-icons](https://github.com/lipis/flag-icons) under the MIT license included in `../flags/LICENSE`. Other currency flags use the existing offline atlas.
+- Oil drum and flame are [Twemoji](https://github.com/jdecked/twemoji) graphics licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Copyright Twitter, Inc. and other contributors.
+- Gulf issuer marks use the image linked by the issuer's TradingView listing under KSE, DFM or NASDAQDUBAI. Both Depa share classes use the issuer's mark.

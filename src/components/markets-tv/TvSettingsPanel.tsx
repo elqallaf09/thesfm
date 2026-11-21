@@ -8,6 +8,7 @@ import { TV_SCENE_ORDER, tvSceneText } from '@/lib/markets-tv/scene-display';
 import { obsText } from '@/lib/markets-tv/obsidian';
 import { welcomeText } from '@/lib/markets-tv/welcome';
 import { tvRemoteCommand } from './tvRemoteKeys';
+import { TvBuildInfo } from './TvBuildInfo';
 import './settings-panel.css';
 
 const sections = [
@@ -183,6 +184,6 @@ export function TvSettingsPanel({ settings, change, stripsOnly = false, displayM
         </details>
       </div>
     </div>
-    <p className="tv-settings-help tv-muted">{t('remoteHelp')}</p>
+    <p className="tv-settings-help tv-muted">{t('remoteHelp')}<TvBuildInfo language={settings.language}/></p>
   </div>;
 }

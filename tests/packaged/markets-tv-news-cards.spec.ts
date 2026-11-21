@@ -14,17 +14,8 @@ const titles = {
   en: 'Global markets assess company earnings and interest rate expectations as investors await economic and liquidity data',
   fr: 'Les marchés évaluent les résultats des entreprises et les perspectives des taux avant les prochaines données économiques',
 };
-const screeningStatuses = ['compliant', 'needs_review', 'non_compliant', 'unclassified'] as const;
-const screeningLabels = {
-  ar: ['متوافق حسب المصدر', 'يحتاج مراجعة شرعية', 'غير متوافق', 'الحالة الشرعية غير معروفة'],
-  en: ['Compliant per source', 'Screening needs review', 'Non-compliant', 'Screening status unknown'],
-  fr: ['Conforme selon la source', 'Conformité à revoir', 'Non conforme', 'Conformité inconnue'],
-};
-const compactScreeningLabels = {
-  ar: ['متوافق', 'يحتاج مراجعة', 'غير متوافق', 'غير مصنّف'],
-  en: ['Compliant', 'Review needed', 'Non-compliant', 'Unclassified'],
-  fr: ['Conforme', 'À vérifier', 'Non conforme', 'Non classé'],
-};
+const screeningLabels = { ar: 'متوافق حسب المصدر', en: 'Compliant per source', fr: 'Conforme selon la source' };
+const compactScreeningLabels = { ar: 'متوافق', en: 'Compliant', fr: 'Conforme' };
 
 function newsItems(count: number, language: Language) {
   return Array.from({ length: count }, (_, index) => ({
@@ -59,9 +50,15 @@ async function openNews(page: Page, language: Language, theme: Theme, view: View
     if (url.pathname.includes('news')) {
       const count = url.pathname === '/api/tv/news' ? channel === 'all' ? 8 : 12 : 24;
       const sharia = url.pathname === '/api/sharia-stocks/news';
-      const stories = newsItems(count, language).map((story, index) => ({ ...story,
-        ...(sharia ? { shariahStatus: screeningStatuses[index % screeningStatuses.length] } : {}),
+      const stories = newsItems(count, language).map(story => ({ ...story,
+        ...(sharia ? { shariahStatus: 'compliant' } : {}),
       }));
+      if (sharia) {
+        const otherStatuses = ['needs_review', 'non_compliant', 'unclassified'];
+        stories.unshift(...otherStatuses.map(status => ({
+          ...stories[0], id: status, title: status, url: 'https://example.com/news/' + status, shariahStatus: status,
+        })));
+      }
       return route.fulfill({ json: { stories, items: stories, channel, success: true,
         ...(sharia ? { category: 'sharia' } : {}),
         generatedAt: instant, lastSuccessfulUpdate: instant } });
@@ -230,15 +227,15 @@ for (const language of ['ar', 'en', 'fr'] as const) for (const theme of ['light'
 }
 
 for (const language of ['ar', 'en', 'fr'] as const) {
-  test('news cards ' + language + '/sharia: all 24 screening labels and full dates fit compact TVs', async ({ page }, testInfo) => {
+  test('news cards ' + language + '/sharia: all 24 compliant headlines fit compact TVs and other decisions stay out', async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 960, height: 540 });
     const cards = await openNews(page, language, 'light', 'shariaNews');
     const headlines = newsItems(24, language).map(story => story.title);
     for (let offset = 0; offset < 24; offset += 2) {
       await expect(cards.locator('.tv-news-title')).toHaveText(headlines.slice(offset, offset + 2));
-      await expect(cards.locator('.tv-news-screening')).toHaveText(Array.from({ length: 2 }, (_, index) => compactScreeningLabels[language][(offset + index) % 4]));
+      await expect(cards.locator('.tv-news-screening')).toHaveText([compactScreeningLabels[language], compactScreeningLabels[language]]);
       for (let index = 0; index < 2; index++) {
-        await expect(cards.nth(index).locator('.tv-news-screening')).toHaveAttribute('title', screeningLabels[language][(offset + index) % 4]);
+        await expect(cards.nth(index).locator('.tv-news-screening')).toHaveAttribute('title', screeningLabels[language]);
       }
       await expectCardGeometry(cards, language === 'ar' ? 'rtl' : 'ltr');
       await page.locator('[data-tv-focus-key="news-next"]').click();
@@ -253,7 +250,7 @@ for (const language of ['ar', 'en', 'fr'] as const) {
     }
     await cards.first().focus();
     await page.keyboard.press('Enter');
-    await expect(page.getByRole('dialog')).toContainText(screeningLabels[language][0]);
+    await expect(page.getByRole('dialog')).toContainText(screeningLabels[language]);
     await expect(page.getByRole('dialog')).toContainText(newsItems(24, language)[0].title);
     await page.keyboard.press('Escape');
     await expect(cards.first()).toBeFocused();

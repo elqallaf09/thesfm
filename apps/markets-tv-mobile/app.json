@@ -3,7 +3,7 @@
     "name": "SFM TV",
     "slug": "sfm-tv-mobile",
     "owner": "elqallaf09",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "default",
     "platforms": [
       "ios",
@@ -19,7 +19,7 @@
     "ios": {
       "bundleIdentifier": "com.thesfm.marketstv.mobile",
       "supportsTablet": true,
-      "buildNumber": "1",
+      "buildNumber": "2",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }

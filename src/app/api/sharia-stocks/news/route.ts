@@ -17,8 +17,9 @@ function newsHasKnownIdentity(item: StockCategoryNewsItem) {
   const universe = universeBySymbol.get(symbol);
   const identity = shariahUniverseIdentity(symbol);
   if (!universe || !identity) return false;
-  const name = normalizeBoubyanCompanyName(item.companyName);
-  if (![universe.name, identity.name, ...(universe.aliases ?? [])].some(value => normalizeBoubyanCompanyName(value) === name)) return false;
+  const knownNames = [universe.name, identity.name, ...(universe.aliases ?? [])].map(normalizeBoubyanCompanyName);
+  const names = item.reportedCompanyNames ?? [item.companyName];
+  if (!names.some(name => knownNames.includes(normalizeBoubyanCompanyName(name)))) return false;
   const reportedVenues = (item.exchangeCodes ?? []).map(normalizeBoubyanExchange).filter(Boolean);
   return !reportedVenues.length || reportedVenues.includes(normalizeBoubyanExchange(identity.exchange));
 }
@@ -31,11 +32,14 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const limit = parseNewsLimit(url.searchParams.get('limit'));
-    const [payload, catalog] = await Promise.all([
-      fetchStockCategoryNews('sharia', url.searchParams.get('lang'), { headlinesOnly: url.searchParams.get('view') === 'headlines', schedulePersistence: task => after(task) }),
-      loadShariahPublicCatalog({ scope: 'universe', now }),
-    ]);
-    const items = payload.items.slice(0, limit).map(item => {
+    const compliantOnly = url.searchParams.get('scope') === 'compliant';
+    const catalog = await loadShariahPublicCatalog({ scope: 'universe', now });
+    const screenedSymbols = compliantOnly ? new Set(SHARIAH_UNIVERSE.filter(asset => asset.assetType === 'stock'
+      && shariahUniverseCatalogItem(asset.symbol, catalog.items, now)?.shariahStatus === 'compliant').map(asset => asset.symbol)) : undefined;
+    const payload = await fetchStockCategoryNews('sharia', url.searchParams.get('lang'), {
+      headlinesOnly: url.searchParams.get('view') === 'headlines', screenedSymbols, schedulePersistence: task => after(task),
+    });
+    const items = payload.items.map(item => {
       const decision = newsHasKnownIdentity(item) ? shariahUniverseCatalogItem(item.ticker, catalog.items, now) : null;
       return {
         ...compactNewsItem(item),
@@ -59,7 +63,7 @@ export async function GET(request: Request) {
         boubyanReferenceReason: decision?.boubyanReferenceReason ?? null,
         sourceConflict: decision?.sourceConflict ?? null,
       };
-    });
+    }).filter(item => !screenedSymbols || (screenedSymbols.has(item.ticker) && item.shariahStatus === 'compliant')).slice(0, limit);
     return NextResponse.json({
       ...payload,
       limit,

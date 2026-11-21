@@ -66,9 +66,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Bundle current SFM TV source into Android
         run: pnpm build:tv
-      - name: Assemble installable debug APKs first
+      - name: Verify account handoff policy and assemble installable debug APKs
         working-directory: apps/markets-tv/android
-        run: gradle --no-daemon assembleDebug
+        run: gradle --no-daemon :app:testPreviewDebugUnitTest assembleDebug
       - name: Verify APK outputs and record build information
         run: |
           test -s apps/markets-tv/android/app/build/outputs/apk/huawei/debug/app-huawei-debug.apk
@@ -163,24 +163,33 @@ jobs:
         with:
           name: markets-tv-debug-${{ github.sha }}
           path: tv-artifacts
-      - name: Publish installable Huawei test package
+      - name: Publish installable TV test packages
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RELEASE_SHA: ${{ github.sha }}
         run: |
           mapfile -t TV_APKS < <(find tv-artifacts -name 'app-huawei-debug.apk' -type f)
+          mapfile -t TV_PREVIEW_APKS < <(find tv-artifacts -name 'app-preview-debug.apk' -type f)
           test "${#TV_APKS[@]}" -eq 1
+          test "${#TV_PREVIEW_APKS[@]}" -eq 1
           TV_METADATA="$(find tv-artifacts -name release.json -type f -print -quit)"
           test -n "$TV_METADATA"
           TV_BUILD="$(python3 -c 'import json,sys; print(int(json.load(open(sys.argv[1]))["build"]))' "$TV_METADATA")"
+          TV_VERSION="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$TV_METADATA")"
           TV_APK_NAME="SFM-TV-Huawei-build$TV_BUILD.apk"
+          TV_PREVIEW_APK_NAME="SFM-TV-Preview-build$TV_BUILD.apk"
           cp "${TV_APKS[0]}" "$TV_APK_NAME"
+          cp "${TV_PREVIEW_APKS[0]}" "$TV_PREVIEW_APK_NAME"
           sha256sum "$TV_APK_NAME" > "$TV_APK_NAME.sha256"
-          cat > release-notes.md <<'NOTES'
+          sha256sum "$TV_PREVIEW_APK_NAME" > "$TV_PREVIEW_APK_NAME.sha256"
+          printf 'Version: %s (build %s)\nSource commit: %s\n\n' "$TV_VERSION" "$TV_BUILD" "$RELEASE_SHA" > release-notes.md
+          cat >> release-notes.md <<'NOTES'
           SFM TV preview for Huawei tablets and Android TV. Version and build are embedded in the APK.
-          Includes a labelled side menu with sign in/sign out, direct market/watchlist/investment destinations, and remote navigation. News cards show photos, sources and dates together. Market customization stays on one TV page with a persistent Save and view action.
+          Includes My Account with profile editing through the browser or a phone QR code, direct market brief and map navigation with the selected destination retained after reload, removal of My Channels, and restored news images. Display settings show the installed Android app version and build number.
           
-          This is a signed debug test APK with application ID com.thesfm.marketstv. It installs separately from the earlier com.thesfm.marketstv.huaweitest package; existing settings in that older test package are not migrated. The APK is not an AppGallery or Google Play release.
+          These are CI-signed debug test APKs, not AppGallery or Google Play releases. The Huawei package uses com.thesfm.marketstv. CI debug certificates are not guaranteed to match an existing installation, so this is not a promised update for an installed production app.
+
+          The SFM TV Preview APK uses com.thesfm.marketstv.preview and installs separately from the production package. It has its own settings and sign-in state. Open Display settings to verify the app version and build number.
           NOTES
-          gh release create "sfm-tv-build$TV_BUILD-$RELEASE_SHA" "$TV_APK_NAME" "$TV_APK_NAME.sha256" --target "$RELEASE_SHA" --title "SFM TV build $TV_BUILD preview" --prerelease --notes-file release-notes.md
+          gh release create "sfm-tv-build$TV_BUILD-$RELEASE_SHA" "$TV_APK_NAME" "$TV_APK_NAME.sha256" "$TV_PREVIEW_APK_NAME" "$TV_PREVIEW_APK_NAME.sha256" --target "$RELEASE_SHA" --title "SFM TV $TV_VERSION (build $TV_BUILD) preview" --prerelease --notes-file release-notes.md

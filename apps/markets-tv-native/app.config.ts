@@ -1,12 +1,13 @@
 import type { ExpoConfig } from 'expo/config';
 
 const config: ExpoConfig = {
-  name: 'SFM Markets TV', slug: 'sfm-markets-tv-native', version: '0.2.0',
+  name: 'SFM Markets TV', slug: 'sfm-markets-tv-native', version: '0.2.1',
+  scheme: 'sfm-tv-native',
   owner: 'elqallaf09',
   orientation: 'landscape',
   platforms: ['ios', 'android'], icon: './assets/icon.png',
-  ios: { bundleIdentifier: 'com.thesfm.marketstv.native', buildNumber: '2', supportsTablet: false, infoPlist: { ITSAppUsesNonExemptEncryption: false } },
-  android: { package: 'com.thesfm.marketstv.tvnative', versionCode: 2, allowBackup: false,
+  ios: { bundleIdentifier: 'com.thesfm.marketstv.native', buildNumber: '5', supportsTablet: false, infoPlist: { ITSAppUsesNonExemptEncryption: false } },
+  android: { package: 'com.thesfm.marketstv.tvnative', versionCode: 5, allowBackup: false,
     permissions: ['INTERNET', 'ACCESS_NETWORK_STATE'],
     blockedPermissions: ['android.permission.READ_EXTERNAL_STORAGE', 'android.permission.WRITE_EXTERNAL_STORAGE', 'android.permission.VIBRATE', 'android.permission.SYSTEM_ALERT_WINDOW'] },
   plugins: ['expo-secure-store', ['@react-native-tvos/config-tv', { isTV: true, tvosDeploymentTarget: '17.0', androidTVBanner: './assets/banner.png',

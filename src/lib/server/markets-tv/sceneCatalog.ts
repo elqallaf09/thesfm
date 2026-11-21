@@ -99,24 +99,25 @@ export function tvConfiguredMarketAssets(market: string): TvAsset[] {
     BAHRAIN_BOURSE:'bahrain_bourse', TD_XBAH:'bahrain_bourse', MUSCAT:'oman_msx', TD_XMUS:'oman_msx' };
   return ids[market] ? configured(ids[market], 40) : [];
 }
-const CRYPTO = ['BTC', 'ETH', 'SOL'].map(base => ({ symbol: `${base}/USDT`, name: `${base}/USDT`,
-  region: 'BINANCE', currency: 'USDT', baseCurrency: base, providerSymbol: `${base}USDT`, assetType: 'crypto' as const }));
 const FOREX = ['EUR/USD', 'GBP/USD', 'USD/JPY'].map(symbol => ({ symbol, name: symbol,
   region: 'FOREX', currency: symbol.split('/')[1], baseCurrency: symbol.split('/')[0], assetType: 'forex' as const }));
 
 export const TV_SCENE_GROUP: Record<TvScene, TvGroup> = {
-  overview: 'global', gulf: 'gulf', world: 'world', assets: 'commodities', watchlist: 'watchlist',
+  overview: 'global', gulf: 'gulf', world: 'world', assets: 'commodities', crypto: 'crypto', watchlist: 'watchlist',
 };
-export function tvSceneAssets(scene: TvScene, ownedSymbols: string[] = []): { summary: TvAsset[]; rows: TvAsset[] } {
+export function tvSceneAssets(scene: Exclude<TvScene, 'crypto'>, ownedSymbols: string[] = []): { summary: TvAsset[]; rows: TvAsset[] } {
   if (scene === 'watchlist') {
     const selected = tvWatchlistAssets(ownedSymbols).slice(0, 10);
     return { summary: selected.slice(0, 4), rows: selected.slice(4) };
   }
-  if (scene === 'gulf') return { summary: configured('kuwait_boursa', 4),
-    rows: ['saudi_tadawul', 'uae_dfm', 'uae_adx', 'qatar_qse', 'bahrain_bourse', 'oman_msx'].flatMap(id => configured(id, 1)) };
+  if (scene === 'gulf') {
+    const markets = ['saudi_tadawul', 'uae_dfm', 'uae_adx', 'qatar_qse', 'bahrain_bourse', 'oman_msx'];
+    const listings = markets.map(id => configured(id, 2));
+    return { summary: listings.slice(0, 4).flatMap(items => items.slice(1, 2)), rows: listings.flatMap(items => items.slice(0, 1)) };
+  }
   if (scene === 'world') return { summary: configured('global_indices', 6).filter(item => ['^GSPC', '^FTSE', '^GDAXI', '^N225'].includes(item.symbol)),
     // The broadcast scene keeps its fixed layout; the Europe market lists every listing.
     rows: [...EUROPE.slice(0, 3), ...configured('japan_tse', 2), ...configured('hongkong_hkex', 1)] };
-  if (scene === 'assets') return { summary: TV_COMMODITIES.slice(0, 4).map(item=>({...item,assetType:'commodity' as const,country:'US'})), rows: [...CRYPTO, ...FOREX] };
+  if (scene === 'assets') return { summary: TV_COMMODITIES.slice(0, 4).map(item=>({...item,assetType:'commodity' as const,country:'US'})), rows: FOREX };
   return { summary: configured('global_indices', 6), rows: [] };
 }

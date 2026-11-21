@@ -89,7 +89,7 @@ test('news pages rotate every 40 seconds and pause for the remote, story dialog,
   await openTvMenu(page); await page.clock.runFor(80000);
   await expect(desk).toHaveAttribute('data-news-page', '2');
   await closeTvMenu(page);
-  const playback = page.locator('.tv-receiver-actions button').first();
+  const playback = page.locator('.tv-receiver-actions button[aria-pressed]');
   await playback.focus(); await playback.press('Enter');
   await expect(playback).toHaveAttribute('aria-pressed', 'false');
   await page.clock.runFor(80000); await expect(desk).toHaveAttribute('data-news-page', '2');
