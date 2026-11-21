@@ -5,9 +5,9 @@ import { tvPackagedOrigin } from '@/lib/markets-tv/cors';
 const story = { id: 'one', title: 'Source headline', source: 'Source', publishedAt: '2026-11-07T11:00:00Z', url: 'https://example.com/one' };
 describe('website news channels on TV', () => {
   it('preserves the original five numbers and exposes every added channel in three languages', () => {
-    expect(TV_RECEIVER_CHANNELS).toHaveLength(25);
+    expect(TV_RECEIVER_CHANNELS).toHaveLength(31);
     expect(TV_RECEIVER_CHANNELS.slice(0,5)).toEqual(['allStocks','technology','kuwait','sessions','investments']);
-    expect(new Set(Object.values(TV_NEWS_FEEDS)).size).toBe(20);
+    expect(new Set(Object.values(TV_NEWS_FEEDS)).size).toBe(26);
     for (const channel of TV_RECEIVER_CHANNELS) for (const language of ['ar','en','fr'] as const) expect(receiverText(language,channel)).toBeTruthy();
     expect(receiverNewsPath('underDollarNews','ar')).toBe('/api/market/special-news?topic=stocks-under-1&lang=ar&limit=24');
     expect(receiverNewsPath('shariaNews','fr')).toBe('/api/sharia-stocks/news?lang=fr&limit=24&view=headlines');

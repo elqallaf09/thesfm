@@ -18,6 +18,8 @@ export const WORKSPACE_ROUTE_PREFIXES = {
     '/asia-market-news', '/federal-reserve-news', '/metals-news', '/healthcare-stocks-news',
     '/new-stocks-news', '/stocks-under-1', '/earnings-news', '/analyst-ratings-news',
     '/mergers-acquisitions-news', '/unusual-moves-news',
+    '/ipo-us-news', '/ipo-asia-news', '/ipo-europe-news',
+    '/ipo-uk-news', '/ipo-gulf-news', '/ipo-arab-news',
     '/energy-stocks', '/banking-stocks', '/sharia-stocks', '/growth-stocks',
     '/defensive-stocks', '/cyclical-stocks', '/dividend-stocks',
   ],

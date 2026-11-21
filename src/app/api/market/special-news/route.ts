@@ -14,6 +14,7 @@ import {
 import { TOPICS, type TopicId, type StaticTickerConfig, type MetalTickerConfig } from '@/lib/market-news/specialTopics';
 import { newListingTicker } from '@/lib/market-news/newListingTicker.server';
 import { rateLimitRequest } from '@/lib/server/rateLimiter';
+import { isIpoTopic } from '@/lib/market-news/ipoRegions';
 
 export const revalidate = 300;
 export const dynamic = 'force-dynamic';
@@ -72,7 +73,7 @@ function companyNameForSymbol(stories: ConsolidatedNewsStory[], symbol: string) 
 function stockTickerFromStories(topic: TopicId, stories: ConsolidatedNewsStory[], prices: Map<string, SpecialQuote>) {
   // Mentioned companies may be investors, peers or underwriters. The news
   // payload has no verified listing date, so it cannot power a new-stock ticker.
-  if (topic === 'new-stocks') return [];
+  if (topic === 'new-stocks' || isIpoTopic(topic)) return [];
   const symbols = uniqueStorySymbols(stories, 18);
   let items = symbols.map(symbol => {
     const quote = prices.get(symbol);
@@ -216,6 +217,9 @@ export async function GET(request: NextRequest) {
       if (topic === 'new-stocks') {
         return NextResponse.json(await newListingTicker(), { headers: { 'Cache-Control': 'no-store' } });
       }
+      // Regional IPO stories name underwriters, investors and peers; none of
+      // them is a verified new listing, so no price strip is derived from them.
+      if (isIpoTopic(topic)) return NextResponse.json({ success: true, topic, tickerItems: [] }, { headers });
       const symbols = (request.nextUrl.searchParams.get('symbols') ?? '').split(',')
         .filter(symbol => /^[A-Z][A-Z0-9.-]{0,14}$/.test(symbol)).slice(0, 12);
       const prices = await fetchSpecialQuotes(symbols);
@@ -249,7 +253,7 @@ export async function GET(request: NextRequest) {
     });
 
     let stories = result.stories.filter(story => matchesTopic(topic, story));
-    if (topic === 'new-stocks') stories.sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt));
+    if (topic === 'new-stocks' || isIpoTopic(topic)) stories.sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt));
     let prices = new Map<string, SpecialQuote>();
     if (topic === 'stocks-under-1') {
       stories = await resolveUnderOneSymbols(stories);

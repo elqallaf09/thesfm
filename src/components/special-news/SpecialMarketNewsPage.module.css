@@ -125,6 +125,45 @@
   margin-top: 14px;
 }
 
+.references {
+  margin-top: 14px;
+  padding: 14px 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--card);
+  color: var(--foreground);
+}
+
+.references strong {
+  font-size: var(--fs-small, 14px);
+  line-height: var(--lh-small, 22px);
+}
+
+.references ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.references li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  color: var(--muted-foreground);
+  font-size: var(--fs-caption, 12px);
+}
+
+.references .officialReference {
+  color: var(--foreground);
+  font-weight: 700;
+}
+
 .metalTicker {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);

@@ -152,6 +152,35 @@ describe('special news data and independent quotes', () => {
     expect(cleanTopic('__proto__')).toBeNull();
   });
 
+  it('accepts multilingual regional IPO headlines and rejects retrospective or unrelated ones', () => {
+    expect(matchesTopic('ipo-gulf-news', story('بدء الاكتتاب في أسهم شركة جديدة على السوق الرئيسية'))).toBe(true);
+    expect(matchesTopic('ipo-uk-news', story('Example plc confirms intention to float on the London Stock Exchange'))).toBe(true);
+    expect(matchesTopic('ipo-europe-news', story('Example SE plant Börsengang in Frankfurt'))).toBe(true);
+    expect(matchesTopic('ipo-europe-news', story('Example annonce son introduction en Bourse sur Euronext Paris'))).toBe(true);
+    expect(matchesTopic('ipo-asia-news', story('Example Ltd shares jump in Hong Kong trading debut'))).toBe(true);
+    expect(matchesTopic('ipo-arab-news', story('البورصة المصرية توافق على قيد وطرح شركة جديدة', { title: 'طرح عام أولي لشركة جديدة في البورصة المصرية' }))).toBe(true);
+    expect(matchesTopic('ipo-us-news', story('Apple returns since its IPO'))).toBe(false);
+    expect(matchesTopic('ipo-gulf-news', story('Oil prices rise in Gulf trading'))).toBe(false);
+  });
+
+  it('serves regional IPO news newest first without deriving a price strip from mentioned companies', async () => {
+    mocked.aggregate.mockResolvedValue({
+      liveUpdatesAvailable: true,
+      stories: [
+        story('Older Gulf IPO priced', { id: 'older', publishedAt: new Date(Date.now() - 3 * 86_400_000).toISOString(), symbols: ['AAPL'] }),
+        story('Newest Gulf IPO opens for subscription', { id: 'newest', publishedAt: new Date(Date.now() - 3_600_000).toISOString() }),
+        story('Saudi bank reports quarterly profit', { id: 'unrelated' }),
+      ],
+    });
+    const payload = await (await GET(request('topic=ipo-gulf-news&lang=ar'))).json();
+    expect(payload.items.map((item: { id: string }) => item.id)).toEqual(['newest', 'older']);
+    expect(payload.tickerItems).toEqual([]);
+    expect(mocked.aggregate.mock.calls[0][0]).toMatchObject({ marketCodes: ['GULF'] });
+    const ticker = await (await GET(request('topic=ipo-gulf-news&part=ticker&symbols=AAPL'))).json();
+    expect(ticker.tickerItems).toEqual([]);
+    expect(mocked.quotes).not.toHaveBeenCalled();
+  });
+
   it('requires fresh USD equity evidence for the under-$1 classification', () => {
     const quote = {
       symbol: 'EXAMPLE', price: 0.5, currency: 'USD', assetType: 'EQUITY', available: true,

@@ -48,6 +48,36 @@ export const TR_SPECIAL_NEWS: Record<string, TranslationEntry> = {
     en: 'Mergers & Acquisitions News',
     fr: 'Actualités fusions-acquisitions',
   },
+  nav_ipo_us_news: {
+    ar: 'أخبار الاكتتابات الأمريكية',
+    en: 'US IPO News',
+    fr: 'Actualités des IPO américaines',
+  },
+  nav_ipo_asia_news: {
+    ar: 'أخبار الاكتتابات الآسيوية',
+    en: 'Asian IPO News',
+    fr: 'Actualités des IPO asiatiques',
+  },
+  nav_ipo_europe_news: {
+    ar: 'أخبار الاكتتابات الأوروبية',
+    en: 'European IPO News',
+    fr: 'Actualités des IPO européennes',
+  },
+  nav_ipo_uk_news: {
+    ar: 'أخبار الاكتتابات البريطانية',
+    en: 'UK IPO News',
+    fr: 'Actualités des IPO britanniques',
+  },
+  nav_ipo_gulf_news: {
+    ar: 'أخبار الاكتتابات الخليجية',
+    en: 'Gulf IPO News',
+    fr: 'Actualités des IPO du Golfe',
+  },
+  nav_ipo_arab_news: {
+    ar: 'أخبار الاكتتابات العربية',
+    en: 'Arab Markets IPO News',
+    fr: 'Actualités des IPO arabes',
+  },
   nav_unusual_moves_news: {
     ar: 'التحركات غير العادية',
     en: 'Unusual Market Moves',

@@ -1,10 +1,13 @@
 import type { ConsolidatedNewsStory } from './types';
 import { TOPICS, type TopicId } from './specialTopics';
 import { isMetalsMarketNews } from '../news/metalsNews';
+import { hasIpoRegionEvidence, isIpoTopic } from './ipoRegions';
 
 const FED_PATTERN = /\b(federal reserve|fomc|fed chair|jerome powell|powell)\b|الاحتياطي الفيدرالي|الفدرالي|باول/iu;
 const HEALTHCARE_PATTERN = /\b(healthcare|health care|biotech|biotechnology|pharma|pharmaceutical|medical device|fda|clinical trial|drug approval|diagnostic|hospital)\b|الرعاية الصحية|الأدوية|الدواء|التكنولوجيا الحيوية|تجارب سريرية/iu;
 const NEW_LISTING_PATTERN = /\b(ipo|initial public offering|newly listed|new listing|market debut|trading debut|direct listing|public debut|begins trading)\b|اكتتاب|طرح عام|إدراج جديد/iu;
+// Regional IPO pages accept the same evidence in the languages their feeds use.
+const REGIONAL_IPO_PATTERN = /\b(ipos?|initial public offering|public offering|newly listed|new listing|market debut|trading debut|stock market debut|direct listing|public debut|begins trading|go(?:es|ing)? public|flotation|floats?|listing on|introduction en bourse|entrée en bourse|börsengang|börsendebüt)\b|اكتتاب|طرح عام|طرح أولي|الطرح العام|إدراج|ادراج|يدرج|تدرج/iu;
 const HISTORICAL_IPO_PATTERN = /\b(since (?:its |their |the )?ipo|(?:years?|decades?) (?:after|since)|(?:invested|bought).{0,60}(?:ipo|public)|ipo.{0,30}(?:years? ago|anniversary))\b|منذ اكتتاب|منذ إدراج|لو استثمرت/iu;
 const EARNINGS_PATTERN = /\b(earnings|quarterly results|revenue|eps|guidance|profit|margin|beat estimates|missed estimates)\b|أرباح|إيرادات|نتائج مالية|نتائج الأعمال/iu;
 const ANALYST_PATTERN = /\b(analyst|upgrade|downgrade|price target|rating|initiated coverage|overweight|underweight)\b|السعر المستهدف|توصية السهم|رفع التوصية|خفض التوصية/iu;
@@ -20,13 +23,14 @@ function storyText(story: ConsolidatedNewsStory) {
   return `${story.title} ${story.summary ?? ''} ${story.companyNames.join(' ')} ${story.sectors.join(' ')} ${story.industries.join(' ')}`;
 }
 
-function matchesNewListing(story: ConsolidatedNewsStory) {
-  if (!NEW_LISTING_PATTERN.test(story.title) || HISTORICAL_IPO_PATTERN.test(story.title)) return false;
+function matchesNewListing(story: ConsolidatedNewsStory, topic: TopicId = 'new-stocks') {
+  const pattern = topic === 'new-stocks' ? NEW_LISTING_PATTERN : REGIONAL_IPO_PATTERN;
+  if (!pattern.test(story.title) || HISTORICAL_IPO_PATTERN.test(story.title)) return false;
   const publishedAt = Date.parse(story.publishedAt);
   const originalPublishedAt = Date.parse(story.earliestPublishedAt);
   const oldest = Number.isFinite(originalPublishedAt) ? Math.min(publishedAt, originalPublishedAt) : publishedAt;
   const now = Date.now();
-  return Number.isFinite(oldest) && oldest >= now - TOPICS['new-stocks'].days * 86_400_000
+  return Number.isFinite(oldest) && oldest >= now - TOPICS[topic].days * 86_400_000
     && publishedAt <= now + 5 * 60_000;
 }
 
@@ -38,6 +42,10 @@ export function matchesTopic(topic: TopicId, story: ConsolidatedNewsStory) {
     return hasCompany && HEALTHCARE_PATTERN.test(text);
   }
   if (topic === 'new-stocks') return matchesNewListing(story);
+  if (isIpoTopic(topic)) {
+    return matchesNewListing(story, topic)
+      && hasIpoRegionEvidence(topic, `${story.title} ${story.summary ?? ''} ${story.sourceName ?? ''}`);
+  }
   if (topic === 'metals-news') return isMetalsMarketNews(story);
   if (topic === 'earnings-news') return ['earnings_results', 'earnings_guidance'].includes(story.eventType) || EARNINGS_PATTERN.test(text);
   if (topic === 'analyst-ratings-news') return story.eventType === 'analyst_rating_change' || ANALYST_PATTERN.test(text);

@@ -77,6 +77,12 @@ describe('workspace navigation selection state', () => {
       'asia-market-news',
       'crypto-news',
       'federal-reserve-news',
+      'ipo-us-news',
+      'ipo-asia-news',
+      'ipo-europe-news',
+      'ipo-uk-news',
+      'ipo-gulf-news',
+      'ipo-arab-news',
       'energy-stocks',
       'metals-news',
       'healthcare-stocks-news',
@@ -97,7 +103,9 @@ describe('workspace navigation selection state', () => {
       .toBe('nav_subgroup_regional_markets');
     expect(marketNews?.items.find(item => item.id === 'energy-stocks')?.sectionLabelKey)
       .toBe('nav_subgroup_sector_strategy');
-    expect(marketNews?.items.filter(item => item.sectionLabelKey)).toHaveLength(2);
+    expect(marketNews?.items.find(item => item.id === 'ipo-us-news')?.sectionLabelKey)
+      .toBe('nav_subgroup_ipos');
+    expect(marketNews?.items.filter(item => item.sectionLabelKey)).toHaveLength(3);
   });
 
   it('automatically reveals a collapsed group containing the active page', () => {
