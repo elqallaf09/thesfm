@@ -634,6 +634,19 @@ describe('resilient provider orchestration and stored fallback', () => {
     expect(result.lastSuccessfulUpdate).toBe(NOW);
   });
 
+  it('includes live providers on a cold price-qualified search, then shares the result', async () => {
+    const stored = clusterRelatedStories([normalizeNewsItem(item())])[0];
+    persistence.searchStoredNews.mockResolvedValue({ stories: [stored], total: 1, lastSuccessfulUpdate: NOW, available: true });
+    const fetchNews = vi.fn(async () => []);
+    const options = { providers: [provider('price-qualified', fetchNews)], pageSize: 1 };
+    await aggregateFinancialNews(params, options);
+    expect(fetchNews).not.toHaveBeenCalled();
+    const qualified = { ...options, includeLiveProviders: true };
+    await Promise.all([aggregateFinancialNews(params, qualified), aggregateFinancialNews(params, qualified)]);
+    await aggregateFinancialNews(params, qualified);
+    expect(fetchNews).toHaveBeenCalledTimes(1);
+  });
+
   it('enforces a requested company name on the consolidated result', async () => {
     const stored = clusterRelatedStories([normalizeNewsItem(item({ id: 'apple-company' }))])[0] as ConsolidatedNewsStory;
     persistence.searchStoredNews.mockResolvedValue({ stories: [stored], total: 1, lastSuccessfulUpdate: stored.publishedAt, available: true });

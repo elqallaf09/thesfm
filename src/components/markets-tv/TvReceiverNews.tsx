@@ -41,7 +41,7 @@ export function TvReceiverNews({ language, channel, now, revision, onStory, onRe
       {!feed.stories.length && (news.error || feed.invalid) ? <TvNewsStatus language={language} error={news.error || 'INVALID_FEED'} onRetry={onRefresh}/>
         : channel === 'kuwait' ? <TvHeadlines news={feed.stories} language={language} now={now} onStory={onStory} playing={playing}/> : <TvNewsDesk key={`${channel}:${language}`} news={feed.stories} language={language} now={now} onStory={onStory} playing={playing} onPaginationAvailable={onPaginationAvailable}/>}
     </>}
-    {channel !== 'kuwait' && <TvPageTicker path={channelTickerPath(channel, news.data)} loading={news.loading}/>}
+    {channel !== 'kuwait' && <TvPageTicker path={channelTickerPath(channel, news.data)} fallbackData={channel === 'underDollarNews' ? news.data : undefined} loading={news.loading}/>}
   </aside>;
 }
 

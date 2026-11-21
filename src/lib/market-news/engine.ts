@@ -66,6 +66,7 @@ export type FinancialNewsAggregationOptions = {
   sort?: 'latest' | 'importance' | 'official' | 'relevance';
   mode?: 'search' | 'ingest';
   forceExternal?: boolean;
+  includeLiveProviders?: boolean;
   providers?: FinancialNewsProvider[];
   skipPersistence?: boolean;
   storeBudgetMs?: number;
@@ -163,6 +164,7 @@ function stableParams(params: Partial<NewsFetchParams>, options: FinancialNewsAg
     strictEntityFilter: params.strictEntityFilter === true,
     page: options.page ?? 1,
     storeBudgetMs: options.storeBudgetMs,
+    includeLiveProviders: options.includeLiveProviders,
     pageSize: options.pageSize ?? DEFAULT_PAGE_SIZE,
     sort: options.sort ?? 'latest',
     storedSearch: options.skipStoredSearch ? 'skip' : 'include',
@@ -563,7 +565,7 @@ async function runAggregation(params: NewsFetchParams, options: FinancialNewsAgg
   // later pages are served from the indexed store populated by ingestion/page
   // one searches, preventing double offsets and duplicate/missing rows.
   const shouldFetchExternal = options.mode === 'ingest'
-    || (page === 1 && (options.forceExternal === true || !storedPageComplete
+    || (page === 1 && (options.forceExternal === true || options.includeLiveProviders || !storedPageComplete
       || !stored.lastSuccessfulUpdate
       || Date.now() - Date.parse(stored.lastSuccessfulUpdate) > INDEXED_FRESHNESS_MS));
   let outcomes: ProviderFetchOutcome[] = [];

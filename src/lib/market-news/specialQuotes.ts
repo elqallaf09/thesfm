@@ -9,7 +9,7 @@ function numeric(value: unknown) {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
-export function verifiedUnderOne(quote: SpecialQuote | undefined) {
+export function verifiedUnderOne(quote: Pick<SpecialQuote, 'available' | 'currency' | 'assetType' | 'price' | 'asOf'> | undefined) {
   const observed = Date.parse(quote?.asOf ?? '');
   return Boolean(quote?.available && quote.currency === 'USD' && quote.assetType === 'EQUITY'
     && quote.price !== null && quote.price > 0 && quote.price < 1

@@ -3,6 +3,7 @@ import { NextRequest } from 'next/server';
 import { IPO_TOPIC_IDS } from '@/lib/market-news/ipoRegions';
 import { TOPICS } from '@/lib/market-news/specialTopics';
 import { cleanTopic, matchesTopic } from '@/lib/market-news/specialMatching';
+import { underDollarQuotes } from '@/lib/market-news/underDollarTicker.server';
 import { verifiedUnderOne } from '@/lib/market-news/specialQuotes';
 import { companyHint, explicitUsSymbols, matchedUsEquity } from '@/lib/market-news/specialSymbols';
 import type { ConsolidatedNewsStory } from '@/lib/market-news/types';
@@ -83,6 +84,21 @@ describe('special news data and independent quotes', () => {
     });
     const payload = await (await GET(request('topic=metals-news&lang=ar'))).json();
     expect(payload.items.map((item: { id: string }) => item.id)).toEqual(['silver', 'gold']);
+  });
+
+  it('screens verified USD common shares independently of the news feed', async () => {
+    const seconds = Math.floor(Date.now() / 1000);
+    const row = { s: 'NASDAQ:EXMP', d: ['EXMP', 'Example', 'NASDAQ', 'stock', 'USD', 0.75, 1.2, seconds, ['common']] };
+    const changed = (index: number, value: unknown) => ({ ...row, d: row.d.map((v, i) => i === index ? value : v) });
+    const invalid = [changed(3, 'fund'), changed(4, 'CAD'), changed(5, 1), changed(5, 0),
+      changed(7, seconds - 5 * 86400), changed(7, seconds + 3600), changed(8, ['warrant']), { ...row, s: 'NYSE:EXMP' }];
+    expect(underDollarQuotes({ data: invalid })).toEqual([]);
+    const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ data: [row, row] }));
+    const payload = await (await GET(request('topic=stocks-under-1&part=ticker'))).json();
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(mocked.aggregate).not.toHaveBeenCalled();
+    expect(payload.tickerItems).toHaveLength(1);
+    expect(payload.tickerItems[0]).toMatchObject({ symbol: 'EXMP', price: 0.75, source: 'TradingView', asOf: new Date(seconds * 1000).toISOString() });
   });
 
   it('does not label a hardcoded watchlist as current IPO or merger news', async () => {
@@ -248,6 +264,7 @@ describe('special news data and independent quotes', () => {
       asOf: new Date().toISOString(), source: 'Yahoo Finance',
     }]]));
     const payload = await (await GET(request('topic=stocks-under-1'))).json();
+    expect(mocked.aggregate.mock.calls[0][1]).toMatchObject({ includeLiveProviders: true, forceExternal: false });
     expect(mocked.quotes).toHaveBeenCalledWith(['EXMP']);
     expect(payload.items).toHaveLength(1);
     expect(payload.items[0]).toMatchObject({ ticker: 'EXMP', price: 0.5, priceVerified: true });

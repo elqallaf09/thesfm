@@ -75,6 +75,25 @@ test('TV preferences remember stock choices, order, per-market speed, density an
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('sfm-markets-tv-settings-v1')!).marketSpeeds.US)).toBe(80);
 });
 
+test('portrait market strips move through one whole quote set per cycle', async ({ page }) => {
+  await fixtures(page);
+  await page.setViewportSize({ width: 430, height: 820 });
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.goto('/tv/strips');
+  await closeTvMenu(page);
+  const track = page.locator('[data-market="US"] .tv-market-strip-track');
+  await expect(track).toHaveAttribute('data-marquee', 'true');
+  await expect(track).toHaveCSS('animation-play-state', 'running');
+  const width = await track.locator('.tv-market-strip-set').first().evaluate(el => el.getBoundingClientRect().width);
+  const distance = await track.evaluate(el => {
+    const animation = el.getAnimations()[0];
+    animation.pause();
+    animation.currentTime = Number(animation.effect!.getTiming().duration) / 2;
+    return Math.abs(new DOMMatrixReadOnly(getComputedStyle(el).transform).m41);
+  });
+  expect(Math.abs(distance - width / 2)).toBeLessThan(2);
+});
+
 test('TV density preserves source evidence, batch coverage and responsive layout', async ({ page }) => {
   await fixtures(page);
   await page.goto('/tv/strips');

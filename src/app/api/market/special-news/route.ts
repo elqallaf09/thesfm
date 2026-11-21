@@ -12,6 +12,7 @@ import {
   translateNewsItems,
 } from '@/lib/translation/translateNewsText';
 import { TOPICS, type TopicId, type StaticTickerConfig, type MetalTickerConfig } from '@/lib/market-news/specialTopics';
+import { underDollarTicker } from '@/lib/market-news/underDollarTicker.server';
 import { newListingTicker } from '@/lib/market-news/newListingTicker.server';
 import { rateLimitRequest } from '@/lib/server/rateLimiter';
 import { isIpoTopic } from '@/lib/market-news/ipoRegions';
@@ -224,6 +225,10 @@ export async function GET(request: NextRequest) {
       if (isIpoTopic(topic)) return NextResponse.json({ success: true, topic, tickerItems: [] }, { headers });
       const symbols = (request.nextUrl.searchParams.get('symbols') ?? '').split(',')
         .filter(symbol => /^[A-Z][A-Z0-9.-]{0,14}$/.test(symbol)).slice(0, 12);
+      if (topic === 'stocks-under-1' && !symbols.length) {
+        const tickerItems = await underDollarTicker();
+        return NextResponse.json({ success: true, topic, tickerItems }, { headers });
+      }
       const prices = await fetchSpecialQuotes(symbols);
       const fixed = topic === 'federal-reserve'
         ? FED_TICKER
@@ -250,6 +255,8 @@ export async function GET(request: NextRequest) {
       // Clicking refresh must not bypass every provider cache simultaneously.
     }, {
       page: 1, pageSize: 60, sort: 'latest', forceExternal: refresh,
+      // The stored text index cannot tell whether a company still trades below $1.
+      includeLiveProviders: topic === 'stocks-under-1' || undefined,
       providers: createSpecialNewsProviders(topic), providerBudgetMs: 6_500,
       schedulePersistence: task => after(task),
     });
