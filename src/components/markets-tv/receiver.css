@@ -3,6 +3,30 @@
 .tv-screen .tv-receiver-heading h1{font-size:1.35em;line-height:1.35;margin:0}
 .tv-receiver-heading p{font-size:max(13px,.75em);color:var(--tv-muted);margin:.15em 0;line-height:1.4}
 .tv-receiver-actions{display:flex;align-items:center;gap:.4em}
+.tv-screen .tv-news-topics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12em), 1fr));
+  gap: .5em;
+  overflow-y: auto;
+  padding: .35em;
+}
+.tv-screen .tv-news-topics button { white-space: normal; min-height: 2.75em; }
+.tv-screen .tv-news-topics button[aria-pressed=true] { border-color: var(--tv-accent); }
+.tv-screen .tv-receiver-news-only .tv-news-status {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .75em;
+  margin: 0;
+  padding: 1em;
+  color: var(--tv-text);
+  font-size: clamp(24px, 2.2vw, 56px);
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: center;
+}
 .tv-receiver-actions label{display:flex;align-items:center;gap:.4em;font-size:max(13px,.8em)}
 .tv-receiver-actions select{max-width:14em;background:var(--tv-panel);color:var(--tv-text);border:1px solid var(--tv-line);border-radius:var(--radius-sm);padding:.35em}
 .tv-screen .tv-receiver-actions button,.tv-screen .tv-receiver-market>header button{padding:.3em;min-height:1.9em;min-width:1.9em}

@@ -49,11 +49,13 @@ export const TV_NEWS_LABELS = {
   cyclicalNews: ["أخبار الأسهم الدورية", "Cyclical stocks news", "Actualités des valeurs cycliques"],
   incomeNews: ["أخبار أسهم الدخل المرتفع", "High income stocks news", "Actualités des valeurs de rendement"],
 } as const;
-export type TvReceiverNewsChannel = TvExtraNewsChannel | 'technology' | 'kuwait';
+export const TV_NEWS_TOPICS = ['news', 'technology', ...TV_EXTRA_NEWS_CHANNELS] as const;
+export type TvReceiverNewsChannel = typeof TV_NEWS_TOPICS[number] | 'kuwait';
 export function isTvExtraNewsChannel(value: unknown): value is TvExtraNewsChannel {
   return typeof value === 'string' && Object.hasOwn(TV_NEWS_FEEDS, value);
 }
 export function receiverNewsPath(channel: TvReceiverNewsChannel, language: TvLanguage) {
+  if (channel === 'news') return `/api/tv/news?language=${language}`;
   if (!isTvExtraNewsChannel(channel)) return `/api/tv/news?language=${language}&channel=${channel}`;
   const path = TV_NEWS_FEEDS[channel];
   const headlinesOnly = /^\/api\/[a-z]+-stocks\/news$/.test(path) || path === '/api/europe-news';
@@ -70,7 +72,7 @@ export function receiverNewsPayload(value: unknown, channel: TvReceiverNewsChann
   const rows = extra ? body.items : body.stories;
   const topic = extra ? new URL(TV_NEWS_FEEDS[channel], 'https://www.the-sfm.com').searchParams.get('topic') : null;
   const category = extra ? TV_NEWS_FEEDS[channel].match(/^\/api\/([a-z]+)-stocks\/news$/)?.[1] : null;
-  const valid = Array.isArray(rows) && (extra ? (!topic || body.topic === topic) && (!category || body.category === category) : body.channel === channel);
+  const valid = Array.isArray(rows) && (extra ? (!topic || body.topic === topic) && (!category || body.category === category) : body.channel === (channel === 'news' ? 'all' : channel));
   const seen = new Set<string>();
   const stories: TvNews[] = valid ? rows.flatMap(value => {
     const item = record(value), url = typeof item.url === 'string' ? safeTvUrl(item.url) : null;

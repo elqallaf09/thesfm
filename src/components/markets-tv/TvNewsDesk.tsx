@@ -3,6 +3,7 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { TvLanguage, TvNews } from '@/lib/markets-tv/types';
 import { tvText } from '@/lib/markets-tv/i18n';
+import { TvNewsStatus } from './TvNewsStatus';
 import { TvNewsCard } from './TvNewsCard';
 import { useTvNewsLayout } from './useTvNewsLayout';
 import { useTvBroadcastPage } from './useTvBroadcastPage';
@@ -37,6 +38,6 @@ export function TvNewsDesk({ news, language, now, onStory, playing, onPagination
           {next}{language === 'ar' ? <ChevronLeft aria-hidden="true"/> : <ChevronRight aria-hidden="true"/>}
         </button>
       </nav>
-    </> : <p role="status">{tvText(language, 'noNews')}</p>}
+    </> : <TvNewsStatus language={language}/>}
   </section>;
 }

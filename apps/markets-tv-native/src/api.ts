@@ -1,7 +1,7 @@
 import type { TvQuote } from '../../../src/lib/markets-tv/types';
 
 export type Language = 'ar' | 'en' | 'fr';
-export type Scene = 'overview' | 'gulf' | 'world' | 'assets';
+export type Scene = 'overview' | 'gulf' | 'world' | 'assets' | 'crypto';
 export type Quote = {
   symbol: string; name: string; nameAr: string; price: number | null; currency: string | null;
   source: string | null; observedAt: string | null; changePercent: number | null;
@@ -10,9 +10,9 @@ export type Quote = {
   observation?: TvQuote['observation']; retryAt?: string | null;
 };
 export type Snapshot = { scene: Scene; summary: Quote[]; quotes: Quote[]; retryAt: string | null; generatedAt: string | null };
-export const SCENES: Scene[] = ['overview', 'gulf', 'world', 'assets'];
+export const SCENES: Scene[] = ['overview', 'gulf', 'world', 'assets', 'crypto'];
 export const ORIGIN = 'https://www.the-sfm.com';
-const groups: Record<Scene, string> = { overview: 'global', gulf: 'gulf', world: 'world', assets: 'commodities' };
+const groups: Record<Scene, string> = { overview: 'global', gulf: 'gulf', world: 'world', assets: 'commodities', crypto: 'crypto' };
 const object = (v: unknown): Record<string, unknown> => v && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, unknown> : {};
 const text = (v: unknown) => typeof v === 'string' && v.trim() ? v : null;
 const numeric = (v: unknown) => typeof v === 'number' && Number.isFinite(v) ? v : null;

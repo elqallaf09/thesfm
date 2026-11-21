@@ -2,31 +2,29 @@
 
 import { useEffect, useRef } from 'react';
 import {
-  Building2, ChartNoAxesCombined, Clock3, Coins, Globe2, Landmark, LogIn, LogOut, Map, Monitor, Newspaper,
+  Bitcoin, Building2, ChartNoAxesCombined, Clock3, Coins, Globe2, Landmark, LogIn, LogOut, Map, Monitor, Newspaper,
   Rows3, Settings2, SlidersHorizontal, Star, Tv, UserRound, WalletCards, Wrench, X,
   type LucideIcon,
 } from 'lucide-react';
 import { hallText } from '@/lib/markets-tv/hallText';
 import { tvText } from '@/lib/markets-tv/i18n';
-import { receiverText, TV_RECEIVER_CHANNELS, type TvReceiverChannel } from '@/lib/markets-tv/receiver';
+import { receiverText } from '@/lib/markets-tv/receiver';
 import type { TvChannel } from '@/lib/markets-tv/channels';
 import { tvSceneText } from '@/lib/markets-tv/scene-display';
 import type { TvLanguage } from '@/lib/markets-tv/types';
 import './side-menu.css';
 
-export type TvSideDestination = 'hall' | 'allStocks' | 'strips' | 'world' | 'gulf' | 'assets' | 'kuwait' | 'news' | 'sessions' | 'watchlist' | 'investments' | 'brief' | 'map';
+export type TvSideDestination = 'hall' | 'allStocks' | 'strips' | 'world' | 'gulf' | 'assets' | 'crypto' | 'kuwait' | 'news' | 'sessions' | 'watchlist' | 'investments' | 'brief' | 'map';
 
 type Props = {
   language: TvLanguage;
   open: boolean;
   active?: TvSideDestination;
-  activeBroadcast?: TvReceiverChannel;
   paired: boolean;
   deviceName?: string;
   onClose: () => void;
   onNavigate: (destination: TvSideDestination) => void;
   channels: TvChannel[];
-  onBroadcast: (channel: TvReceiverChannel) => void;
   onSavedChannel: (channel: TvChannel) => void;
   onCustomize: () => void;
   onSettings: () => void;
@@ -46,7 +44,7 @@ export const tvMenuText = (language: TvLanguage, key: keyof typeof COPY.ar) => C
 
 type MenuItem = { key: string; label: string; icon: LucideIcon; destination?: TvSideDestination; action: () => void };
 
-export function TvSideMenu({ language, open, active, activeBroadcast, paired, deviceName, onClose, onNavigate, channels, onBroadcast, onSavedChannel, onCustomize, onSettings, onMyAccount, onAccount, onSwitchAccount, onTools }: Props) {
+export function TvSideMenu({ language, open, active, paired, deviceName, onClose, onNavigate, channels, onSavedChannel, onCustomize, onSettings, onMyAccount, onAccount, onSwitchAccount, onTools }: Props) {
   const panel = useRef<HTMLElement>(null);
   const copy = COPY[language];
   const t = (key: Parameters<typeof tvText>[1]) => tvText(language, key);
@@ -58,22 +56,22 @@ export function TvSideMenu({ language, open, active, activeBroadcast, paired, de
     route('allStocks', hallText(language, 'allStocks'), ChartNoAxesCombined),
     route('strips', copy.strips, Rows3),
     route('world', copy.world, Globe2),
+    route('kuwait', receiverText(language, 'kuwait'), Building2),
     route('gulf', tvSceneText(language, 'gulf'), Landmark),
     route('assets', tvSceneText(language, 'assets'), Coins),
-    route('kuwait', receiverText(language, 'kuwait'), Building2),
+    route('crypto', tvSceneText(language, 'crypto'), Bitcoin),
     route('news', copy.news, Newspaper),
     route('sessions', receiverText(language, 'sessions'), Clock3),
     route('watchlist', tvSceneText(language, 'watchlist'), Star),
     route('investments', t('investments'), WalletCards),
     route('brief', t('brief'), Newspaper),
     route('map', t('map'), Map),
-    ...TV_RECEIVER_CHANNELS.filter(channel => !['allStocks', 'kuwait', 'sessions', 'investments'].includes(channel)).map(channel => ({ key: `broadcast:${channel}`, label: receiverText(language, channel), icon: Tv, action: () => onBroadcast(channel) })),
     ...channels.map(channel => ({ key: `saved:${channel.id}`, label: channel.name, icon: Tv, action: () => onSavedChannel(channel) })),
     { key: 'customize', label: t('customizeMarkets'), icon: SlidersHorizontal, action: onCustomize },
     { key: 'settings', label: t('settings'), icon: Settings2, action: onSettings },
   ];
   const keys = ['menu-close', ...items.map(item => item.key), 'my-account', 'switch-account', 'pair', 'more'];
-  const selectedKey = activeBroadcast && items.some(item => item.key === `broadcast:${activeBroadcast}`) ? `broadcast:${activeBroadcast}` : `menu:${active || 'hall'}`;
+  const selectedKey = `menu:${active || 'hall'}`;
   const neighbors = (key: string) => {
     const index = keys.indexOf(key);
     return { 'data-tv-nav-up': keys[Math.max(0, index - 1)], 'data-tv-nav-down': keys[Math.min(keys.length - 1, index + 1)] };
@@ -84,7 +82,7 @@ export function TvSideMenu({ language, open, active, activeBroadcast, paired, de
     const target = panel.current?.querySelector<HTMLElement>('[data-tv-initial-focus]');
     target?.focus({ preventScroll: true });
     target?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
-  }, [open, active, activeBroadcast]);
+  }, [open, active]);
 
   useEffect(() => {
     if (!open) return;

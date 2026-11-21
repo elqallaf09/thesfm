@@ -14,11 +14,11 @@ import { TvStripQuote } from './TvStripQuote';
 
 type Channel = Exclude<TvReceiverChannel, 'sessions' | 'investments'>;
 type Props = { channel: Channel; language: TvLanguage; now: number; revision: number; playing: boolean;
-  togglePlay: () => void; onQuote: (quote: TvQuote) => void; onStory: (story: TvNews) => void; onRefresh: () => void; onPaginationAvailable?: (available: boolean) => void };
+  togglePlay: () => void; onQuote: (quote: TvQuote) => void; onStory: (story: TvNews) => void; onRefresh: () => void; onNewsTopics: () => void; onPaginationAvailable?: (available: boolean) => void };
 const EMPTY_MARKETS: TvMarket[] = [];
 const KUWAIT: TvMarket = { id: 'BOURSA_KUWAIT', group: 'gulf', labelAr: 'بورصة الكويت', labelEn: 'Boursa Kuwait', labelFr: 'Bourse du Koweït', count: 0, status: 'unknown' };
 
-export default function TvReceiverScreen({ channel, language, now, revision, playing, togglePlay, onQuote, onStory, onRefresh, onPaginationAvailable }: Props) {
+export default function TvReceiverScreen({ channel, language, now, revision, playing, togglePlay, onQuote, onStory, onRefresh, onNewsTopics, onPaginationAvailable }: Props) {
   const newsOnly = channel !== 'allStocks' && channel !== 'kuwait';
   const catalog = useTvResource<{ markets: TvMarket[] }>(channel === 'allStocks' ? '/api/tv/catalog' : null, 300000, '', revision);
   const sourceMarkets = catalog.data?.markets || EMPTY_MARKETS;
@@ -58,6 +58,7 @@ export default function TvReceiverScreen({ channel, language, now, revision, pla
   return <main className={`tv-receiver-screen tv-receiver-${channel}${newsOnly ? ' tv-receiver-news-only' : ''}`}>
     <header className="tv-receiver-heading"><div><h1>{receiverText(language, channel)}</h1><p>{receiverText(language, channel === 'allStocks' ? 'allHelp' : channel === 'kuwait' ? 'kuwaitHelp' : channel === 'shariaNews' ? 'shariaHelp' : 'newsHelp')}</p></div>
       <div className="tv-receiver-actions">
+        {newsOnly && <button type="button" data-tv-focus-key="news-topics" aria-haspopup="dialog" onClick={onNewsTopics}>{receiverText(language, 'newsTopics')}</button>}
         {channel === 'allStocks' && <label>{receiverText(language, 'market')}<select value={selected} onChange={event => { setSelected(event.target.value); setCursors({}); }}>
           <option value="">{t('allMarkets')}</option>{markets.map(m => <option key={m.id} value={m.id}>{language === 'ar' ? m.labelAr : language === 'fr' ? m.labelFr : m.labelEn}</option>)}
         </select></label>}
