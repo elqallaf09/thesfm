@@ -69,7 +69,7 @@ function TvResolvedIcon({ quote, group }: IconProps) {
   const ticker = displaySymbol || symbol;
   const url = urls[attempt];
   const loaded = Boolean(url && url === loadedUrl);
-  return <span className="tv-asset-icon tv-identity-mark" aria-hidden="true" dir="ltr"
+  return <span className="tv-asset-icon tv-identity-mark" aria-hidden="true"
     data-kind={kind} data-metal={Boolean(metalFile[symbol])} data-index-mark={index ? true : undefined} data-issuer={symbol === 'SVIX' && urls[0]?.endsWith('/svix.png') ? 'svix' : undefined}
     data-logo-state={loaded ? 'loaded' : url ? 'loading' : 'fallback'}>
     {!loaded && (index ? <span className="tv-index-lettering"><span>{index.label}</span><strong>{index.number}</strong></span>

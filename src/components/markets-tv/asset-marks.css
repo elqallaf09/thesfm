@@ -1,4 +1,4 @@
-.tv-screen .tv-identity-mark { position: relative; isolation: isolate; }
+.tv-screen .tv-identity-mark { position: relative; isolation: isolate; direction: ltr; }
 .tv-screen .tv-asset-icon.tv-identity-mark[data-index-mark] { background: var(--tv-panel2); color: var(--tv-text); }
 .tv-index-lettering { display: grid; justify-items: center; line-height: 1; gap: .06em; font-family: var(--font-data), monospace; }
 .tv-index-lettering > span { font-size: .42em; font-weight: 700; }
