@@ -108,7 +108,7 @@ export default function App() {
       <View style={[s.root, s.backdrop]}><View style={[s.modalFrame, frame]}><TVFocusGuideView autoFocus trapFocusUp trapFocusDown trapFocusLeft trapFocusRight style={[s.dialog, { backgroundColor: colors.panel, borderColor: colors.border }]}>
         <Label large>{r(language, guide ? 'channels' : 'pair')}</Label>
         {guide ? <><View style={s.guide}>{TV_RECEIVER_CHANNELS.slice(guidePage * 5, guidePage * 5 + 5).map(value => <TvButton key={value} selected={channel === value} onPress={() => choose(value)}>{`${String(TV_RECEIVER_CHANNELS.indexOf(value) + 1).padStart(2, '0')}  ${receiverText(language, value)}`}</TvButton>)}</View>
-          <Pages page={guidePage} pages={5} change={value => { interact(); setGuidePage(value); }}/></>
+          <Pages page={guidePage} pages={Math.ceil(TV_RECEIVER_CHANNELS.length / 5)} change={value => { interact(); setGuidePage(value); }}/></>
           : device.token ? <><Label>{r(language, 'linked')}</Label><TvButton disabled={device.busy} onPress={() => { void device.unlink(); }}>{r(language, 'unlink')}</TvButton></>
           : <><Label>{r(language, 'instructions')}</Label>{device.pair ? <><Label large>{device.pair.code}</Label>
             <Label>{`${r(language, 'expiry')} ${durationClock(Date.parse(device.pair.expiresAt) - now)}`}</Label><Label muted>{r(language, 'confirming')}</Label></>

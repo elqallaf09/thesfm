@@ -1,6 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 
-export type TvTestDestination = 'hall' | 'allStocks' | 'strips' | 'world' | 'kuwait' | 'news' | 'sessions' | 'watchlist' | 'investments' | 'gulf' | 'assets' | 'brief' | 'map';
+export type TvTestDestination = 'hall' | 'allStocks' | 'strips' | 'world' | 'kuwait' | 'news' | 'sessions' | 'watchlist' | 'investments' | 'gulf' | 'assets' | 'crypto' | 'brief' | 'map';
 
 async function waitForTvRoot(page: Page) {
   // Next's streamed response can briefly include a hidden replacement tree.
@@ -79,10 +79,9 @@ export async function chooseTvBroadcast(page: Page, channel: string) {
     await expect(page.locator('[data-tv-root]')).toHaveAttribute('data-tv-view', channel);
     return;
   }
-  await openTvMenu(page);
-  const target = page.locator(`[data-tv-focus-key="broadcast:${channel}"]`);
-  await expect(target).toBeVisible();
-  await target.click();
+  if (!await page.locator('[data-tv-focus-key="news-topics"]').isVisible()) await chooseTvDestination(page, 'news');
+  await page.locator('[data-tv-focus-key="news-topics"]').click();
+  await page.locator(`[data-tv-focus-key="topic:${channel}"]`).click();
   await expect(page.locator('.tv-side-menu')).toHaveCount(0);
   await expect(page.locator('[data-tv-dialog]')).toHaveCount(0);
   await expect(page.locator('[data-tv-root]')).toHaveAttribute('data-tv-view', channel);

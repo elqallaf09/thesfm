@@ -4,7 +4,7 @@ export type TvLanguage = 'ar' | 'en' | 'fr';
 export type TvAccent = 'champagne' | 'blue' | 'green' | 'purple';
 export type TvGroup = 'world' | 'global' | 'us' | 'gulf' | 'europe' | 'asia' | 'crypto' | 'forex' | 'commodities' | 'watchlist';
 export type TvView = 'markets' | 'map' | 'brief' | TvReceiverChannel;
-export type TvScene = 'overview' | 'gulf' | 'world' | 'assets' | 'watchlist';
+export type TvScene = 'overview' | 'gulf' | 'world' | 'assets' | 'crypto' | 'watchlist';
 export type TvDisplayMode = 'viewing' | 'browse' | 'strips';
 export type TvSettings = {
   accent?: TvAccent;
@@ -68,7 +68,7 @@ export function normalizeTvSettings(value: unknown): TvSettings {
     language: row.language === 'en' || row.language === 'fr' ? row.language : 'ar',
     theme: row.theme === 'dark' || row.theme === 'light' ? row.theme : DEFAULT_TV_SETTINGS.theme, layout: row.layout === 'quotes' ? 'quotes' : 'balanced',
     displayMode: row.displayMode === 'browse' || row.displayMode === 'strips' ? row.displayMode : 'viewing',
-    scene: row.scene === 'gulf' || row.scene === 'world' || row.scene === 'assets' || row.scene === 'watchlist' ? row.scene : 'overview',
+    scene: row.scene === 'gulf' || row.scene === 'world' || row.scene === 'assets' || row.scene === 'crypto' || row.scene === 'watchlist' ? row.scene : 'overview',
     groups: groups.length ? groups : [...DEFAULT_TV_SETTINGS.groups], autoRotate: row.autoRotate === true,
     rotationSeconds: [20, 30, 60, 120].includes(Number(row.rotationSeconds)) ? Number(row.rotationSeconds) : 30,
     ticker: row.ticker !== false, sound: row.sound === true,
