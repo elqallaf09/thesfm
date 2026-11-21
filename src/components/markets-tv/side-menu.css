@@ -151,6 +151,9 @@
 }
 .tv-screen .tv-wallpaper-grid button {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 0;
   min-width: 0;
   padding: 0;
   overflow: hidden;
@@ -160,8 +163,8 @@
 }
 .tv-screen .tv-wallpaper-preview {
   display: block;
-  aspect-ratio: 16 / 9;
-  min-height: 3.25em;
+  width: 100%;
+  height: clamp(48px, 14vh, 160px);
   background-size: cover;
   background-position: center;
 }
@@ -183,4 +186,5 @@
 .tv-screen.tv-dark[data-tv-root][data-tv-wallpaper]:not([data-tv-wallpaper=original])::before { opacity: .36; }
 @media (max-width: 600px) {
   .tv-screen .tv-wallpaper-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tv-screen .tv-wallpaper-preview { height: clamp(48px, 12vh, 110px); }
 }

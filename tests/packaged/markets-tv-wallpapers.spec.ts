@@ -46,6 +46,9 @@ test('all six bundled wallpapers render, apply, survive reload and restore the o
     const grid = page.locator('.tv-wallpaper-grid');
     await expect(grid.getByRole('button')).toHaveCount(7);
     const tile = key(page, `wallpaper:${id}`);
+    const previewBox = await tile.locator('.tv-wallpaper-preview').boundingBox();
+    const tileBox = await tile.boundingBox();
+    expect(previewBox!.width).toBeGreaterThan(tileBox!.width * .9);
     const width = await tile.locator('.tv-wallpaper-preview').evaluate(async el => {
       const image = new Image();
       image.src = getComputedStyle(el).backgroundImage.slice(5, -2);
@@ -71,4 +74,41 @@ test('all six bundled wallpapers render, apply, survive reload and restore the o
   await expect(key(page, 'wallpaper:kuwait-bay')).toHaveAttribute('aria-pressed', 'true');
   await page.keyboard.press('Escape');
   await expect(root).toHaveAttribute('data-tv-wallpaper', 'kuwait-bay');
+});
+
+test('appearance settings expose the selected wallpaper and open the same gallery with the remote', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await start(page, 'kuwait-bay');
+  const root = page.locator('[data-tv-root]');
+  for (const language of [
+    { code: 'ar', title: 'اختيار صورة الخلفية', current: 'أبراج الكويت' },
+    { code: 'en', title: 'Choose background image', current: 'Kuwait Towers' },
+    { code: 'fr', title: 'Choisir une image de fond', current: 'Tours du Koweït' },
+  ]) {
+    await openTvMenu(page);
+    await key(page, 'settings').click();
+    await key(page, `settings-language-${language.code}`).click();
+    const entry = key(page, 'settings-wallpapers');
+    await expect(entry).toContainText(language.title);
+    await expect(entry).toContainText(language.current);
+    await entry.focus();
+    await page.keyboard.press('Enter');
+    const gallery = page.locator('.tv-wallpaper-grid');
+    await expect(gallery).toBeVisible();
+    await expect(gallery.getByRole('button')).toHaveCount(7);
+    await expect(key(page, 'wallpaper:kuwait-bay')).toHaveAttribute('aria-pressed', 'true');
+    await expect(key(page, 'wallpaper:kuwait-bay')).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(gallery).toHaveCount(0);
+    await expect(key(page, 'menu-toggle')).toBeFocused();
+  }
+  await openTvMenu(page);
+  await key(page, 'settings').click();
+  await key(page, 'settings-wallpapers').click();
+  await key(page, 'wallpaper:tokyo').focus();
+  await page.keyboard.press('Enter');
+  await expect(root).toHaveAttribute('data-tv-wallpaper', 'tokyo');
+  await expect(key(page, 'menu-toggle')).toBeFocused();
+  await page.reload();
+  await expect(root).toHaveAttribute('data-tv-wallpaper', 'tokyo');
 });

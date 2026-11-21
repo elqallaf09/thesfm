@@ -19,9 +19,9 @@ describe('native TV feature navigation', () => {
   });
   it('restores legacy channel preferences and safely defaults malformed local values', () => {
     expect(restoreNativePreferences(JSON.stringify({ channel: 'investments', language: 'fr', light: true, rotation: false })))
-      .toEqual({ navigation: { destination: 'investments', channel: 'investments' }, language: 'fr', light: true, rotation: false });
+      .toEqual({ navigation: { destination: 'investments', channel: 'investments' }, language: 'fr', light: true, rotation: false, wallpaper: 'original' });
     for (const raw of [null, '{', '[]', 'null', '42', '{"channel":"__proto__","destination":"https://evil.example","region":"private","language":{"toString":"fr"}}']) {
-      expect(restoreNativePreferences(raw)).toEqual({ navigation: DEFAULT_NATIVE_NAVIGATION, language: 'ar', light: false, rotation: true });
+      expect(restoreNativePreferences(raw)).toEqual({ navigation: DEFAULT_NATIVE_NAVIGATION, language: 'ar', light: false, rotation: true, wallpaper: 'original' });
     }
   });
   it('persists public features and selected atlas regions without accepting arbitrary filter values', () => {
