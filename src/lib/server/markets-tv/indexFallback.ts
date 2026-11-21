@@ -6,17 +6,28 @@ import { quoteStatus } from '@/lib/markets-tv/quotes';
 import type { TvQuote } from '@/lib/markets-tv/types';
 
 const cooldowns = new Map<string, number>();
-const pending = new Map<string, ReturnType<typeof read>>();
+const pending = new Map<string, Promise<ReturnType<typeof verifiedTvIndex>>>();
+class NoIndexEvidence extends Error {}
+// Only verified evidence is shared. A miss throws, so the shared cache never
+// stores "no price" for two minutes (or, with a failing refresh, for good):
+// the next viewer asks again, still bounded by the per-symbol cooldown.
 const read = unstable_cache(async (symbol: string) => {
-  if (!isTvExternalIndex(symbol) || (cooldowns.get(symbol) || 0) > Date.now()) return null;
+  if (!isTvExternalIndex(symbol) || (cooldowns.get(symbol) || 0) > Date.now()) throw new NoIndexEvidence();
   const data = await fetchYahooHistory(symbol, 'index', '1d', '5m', false, 3500);
   if (!data.success) {
     if (data.retryAfterMs !== undefined) cooldowns.set(symbol, Date.now() + Math.max(60_000, data.retryAfterMs));
-    return null;
+    throw new NoIndexEvidence();
   }
   cooldowns.delete(symbol);
-  return verifiedTvIndex(symbol, data);
-}, ['tv-external-cash-index-v1'], { revalidate: 120 });
+  const verified = verifiedTvIndex(symbol, data);
+  if (!verified) {
+    const s = data.quoteSnapshot;
+    console.warn('[markets-tv] TV_INDEX_EVIDENCE_REJECTED', { symbol, providerSymbol: data.providerSymbol, currency: data.currency,
+      snapshot: s ? { symbol: s.symbol, assetType: s.assetType, currency: s.currency, price: s.price, marketTime: s.marketTime } : null });
+    throw new NoIndexEvidence();
+  }
+  return verified;
+}, ['tv-external-cash-index-v2'], { revalidate: 120 });
 
 export async function loadTvExternalIndex(symbol: string) {
   if (!isTvExternalIndex(symbol)) return null;
