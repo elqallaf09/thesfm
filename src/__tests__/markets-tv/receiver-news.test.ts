@@ -5,9 +5,9 @@ import { tvPackagedOrigin } from '@/lib/markets-tv/cors';
 const story = { id: 'one', title: 'Source headline', source: 'Source', publishedAt: '2026-11-07T11:00:00Z', url: 'https://example.com/one' };
 describe('website news channels on TV', () => {
   it('preserves the original five numbers and exposes every added channel in three languages', () => {
-    expect(TV_RECEIVER_CHANNELS).toHaveLength(27);
+    expect(TV_RECEIVER_CHANNELS).toHaveLength(33);
     expect(TV_RECEIVER_CHANNELS.slice(0,5)).toEqual(['allStocks','technology','kuwait','sessions','investments']);
-    expect(new Set(Object.values(TV_NEWS_FEEDS)).size).toBe(20);
+    expect(new Set(Object.values(TV_NEWS_FEEDS)).size).toBe(26);
     for (const channel of TV_RECEIVER_CHANNELS) for (const language of ['ar','en','fr'] as const) expect(receiverText(language,channel)).toBeTruthy();
     expect(receiverNewsPath('underDollarNews','ar')).toBe('/api/market/special-news?topic=stocks-under-1&lang=ar&limit=24');
     expect(receiverNewsPath('shariaNews','fr')).toBe('/api/sharia-stocks/news?lang=fr&limit=24&view=headlines&scope=compliant');
@@ -15,6 +15,7 @@ describe('website news channels on TV', () => {
   it('rejects wrong scopes, unsafe or undated items and deduplicates source URLs', () => {
     expect(receiverNewsPayload({ items: [story], topic: 'metals-news' }, 'underDollarNews').invalid).toBe(true);
     expect(receiverNewsPayload({ items: [story], category: 'growth' }, 'shariaNews').stories).toEqual([]);
+    expect(receiverNewsPath('cryptoNews', 'ar')).toBe('/api/crypto-news?lang=ar&limit=24&view=headlines');
     expect(receiverNewsPath('news', 'ar')).toBe('/api/tv/news?language=ar');
     expect(receiverNewsPayload({ channel: 'all', stories: [story] }, 'news').stories).toEqual([story]);
     expect(receiverNewsPayload({ channel: 'technology', stories: [story] }, 'news').invalid).toBe(true);

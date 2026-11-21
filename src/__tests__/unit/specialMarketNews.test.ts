@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
+import { IPO_TOPIC_IDS } from '@/lib/market-news/ipoRegions';
 import { TOPICS } from '@/lib/market-news/specialTopics';
 import { cleanTopic, matchesTopic } from '@/lib/market-news/specialMatching';
 import { verifiedUnderOne } from '@/lib/market-news/specialQuotes';
@@ -150,6 +151,74 @@ describe('special news data and independent quotes', () => {
     expect(matchesTopic('mergers-acquisitions-news', story('Retailer launches a discount offer'))).toBe(false);
     expect(matchesTopic('metals-news', story('Oil price jumps', { eventType: 'commodity_price_event' }))).toBe(false);
     expect(cleanTopic('__proto__')).toBeNull();
+  });
+
+  it('accepts multilingual regional IPO headlines and rejects retrospective or unrelated ones', () => {
+    expect(matchesTopic('ipo-gulf-news', story('بدء الاكتتاب في أسهم شركة جديدة في بورصة الكويت'))).toBe(true);
+    expect(matchesTopic('ipo-uk-news', story('Example plc confirms intention to float on the London Stock Exchange'))).toBe(true);
+    expect(matchesTopic('ipo-europe-news', story('Example SE plant Börsengang in Frankfurt'))).toBe(true);
+    expect(matchesTopic('ipo-europe-news', story('Example annonce son introduction en Bourse sur Euronext Paris'))).toBe(true);
+    expect(matchesTopic('ipo-asia-news', story('Example Ltd shares jump in Hong Kong trading debut'))).toBe(true);
+    expect(matchesTopic('ipo-arab-news', story('البورصة المصرية توافق على قيد وطرح شركة جديدة', { title: 'طرح عام أولي لشركة جديدة في البورصة المصرية' }))).toBe(true);
+    expect(matchesTopic('ipo-us-news', story('Apple returns since its IPO'))).toBe(false);
+    expect(matchesTopic('ipo-gulf-news', story('Oil prices rise in Gulf trading'))).toBe(false);
+  });
+
+  it.each([
+    ['Kuwaiti company prices its Nasdaq IPO', 'Demand from investors in Kuwait', 'Gulf News', 'ipo-us-news'],
+    ['US company launches IPO on Boursa Kuwait', 'Banks in Cairo advise on the deal', 'Reuters', 'ipo-gulf-news'],
+    ['بدء طرح عام في بورصة الكويت', 'بمشاركة مستثمرين من مصر', 'القاهرة', 'ipo-gulf-news'],
+    ['بدء اكتتاب في بورصة عمان', '', 'وكالة عمان', 'ipo-arab-news'],
+    ['طرح عام أولي في سلطنة عمان', '', 'الصحافة الأردنية', 'ipo-gulf-news'],
+    ['اكتتاب في عمان', '', 'Reuters', null],
+    ['Gulf investors back IPO', 'The company will list on the London Stock Exchange', 'Reuters', 'ipo-uk-news'],
+    ['IPO on Nasdaq Nordic', '', 'Wall Street Journal', 'ipo-europe-news'],
+    ['Asian company sets IPO price on Nasdaq Dubai', '', 'Reuters', 'ipo-gulf-news'],
+    ['British startup seeks IPO', '', 'London', null],
+    ['الأسهم الأوروبية تتراجع وسط ترقب اكتتاب شركة أمريكية', '', 'Reuters', null],
+    ['إدراج شركات على قائمة العقوبات البريطانية', '', 'Reuters', null],
+    ['بورصة الكويت تعلن إدراج أول صكوك', '', 'Reuters', null],
+    ['إلغاء إدراج أسهم شركة في سوق أبوظبي', '', 'Reuters', null],
+    ['قرار بشأن اكتتاب مصر في رأسمال هيئة التنمية الدولية', '', 'Reuters', null],
+    ['سوق أبوظبي يعتزم إدراج صندوق للأسهم الأميركية', '', 'Reuters', null],
+    ['Company prices IPO on Nasdaq', '', 'Nasdaq', 'ipo-us-news'],
+    ['IPO planned', 'Kuwait Times', 'Kuwait Times', null],
+    ['Issuer hires agency for UK public affairs ahead of London IPO', '', 'Trade press', null],
+    ['طرح عام أولي عبر زيادة رأس المال في بورصة الدار البيضاء', '', 'Reuters', 'ipo-arab-news'],
+    ['اكتتاب لزيادة رأس المال في بورصة الكويت', '', 'Reuters', null],
+    ['US IPO attracts demand', '', 'Reuters', 'ipo-us-news'],
+    ['IPO on HKEX', '', 'Gulf News', 'ipo-asia-news'],
+    ['Introduction en Bourse à Casablanca', '', 'Paris', 'ipo-arab-news'],
+    ['Company sets IPO price - Gulf News', 'Company sets IPO price  Gulf News', 'Gulf News', null],
+    ['Company sets IPO price', 'Investors await details', 'Kuwait Times', null],
+    ['إدراج الكويت على القائمة الرمادية', '', 'القبس', null],
+    ['بورصة البحرين تعلن إدراج أذون خزانة حكومية', '', 'بورصة البحرين', null],
+    ['اكتتاب الكويت في زيادة رأس مال صندوق النقد العربي', '', 'القبس', null],
+    ['إدراج أسهم الشركة في بورصة مسقط', '', 'Reuters', 'ipo-gulf-news'],
+    ['شركة تطرح أسهمها للاكتتاب في البورصة المصرية', '', 'Reuters', 'ipo-arab-news'],
+  ] as const)('isolates the listing for %s', (title, summary, sourceName, expected) => {
+    const item = story(title, { summary, sourceName });
+    expect(IPO_TOPIC_IDS.filter(topic => matchesTopic(topic, item))).toEqual(expected ? [expected] : []);
+  });
+
+  it('serves regional IPO news newest first without deriving a price strip from mentioned companies', async () => {
+    mocked.aggregate.mockResolvedValue({
+      liveUpdatesAvailable: true,
+      stories: [
+        story('Older Gulf IPO priced', { id: 'older', publishedAt: new Date(Date.now() - 3 * 86_400_000).toISOString(), symbols: ['AAPL'], companyNames: ['Apple'] }),
+        story('Newest Gulf IPO opens for subscription - Reuters', { summary: 'Newest Gulf IPO opens for subscription &nbsp;&nbsp; Reuters', id: 'newest', publishedAt: new Date(Date.now() - 3_600_000).toISOString() }),
+        story('Saudi bank reports quarterly profit', { id: 'unrelated' }),
+      ],
+    });
+    const payload = await (await GET(request('topic=ipo-gulf-news&lang=ar'))).json();
+    expect(payload.items.map((item: { id: string }) => item.id)).toEqual(['newest', 'older']);
+    expect(payload.tickerItems).toEqual([]);
+    expect(payload.items[0]).toMatchObject({ title: 'Newest Gulf IPO opens for subscription', summary: '', source: 'Reuters' });
+    expect(payload.items[1]).toMatchObject({ ticker: null, symbols: [], companyNames: [], price: null });
+    expect(mocked.aggregate.mock.calls[0][0]).toMatchObject({ marketCodes: ['GULF'] });
+    const ticker = await (await GET(request('topic=ipo-gulf-news&part=ticker&symbols=AAPL'))).json();
+    expect(ticker.tickerItems).toEqual([]);
+    expect(mocked.quotes).not.toHaveBeenCalled();
   });
 
   it('requires fresh USD equity evidence for the under-$1 classification', () => {

@@ -13,7 +13,7 @@ const items = changes.map((changePercent, index) => ({
   currency: 'USD', region: 'US', changePercent,
 }));
 
-async function openStocks(page: Page, theme: 'light' | 'dark', beforeAllStocks?: () => Promise<void>) {
+async function openStocks(page: Page, theme: 'light' | 'dark', beforeAllStocks?: () => Promise<void>, directory = items) {
   await page.addInitScript(theme => {
     localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({
       language: 'ar', theme, accent: 'champagne', displayMode: 'viewing', autoRotate: false,
@@ -23,21 +23,21 @@ async function openStocks(page: Page, theme: 'light' | 'dark', beforeAllStocks?:
   const retainedAt = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   await page.route('**/api/tv/catalog', route => route.fulfill({ json: { markets: [{
     id: 'US', group: 'us', labelAr: 'سوق اختبار', labelEn: 'Test exchange', labelFr: 'Bourse de test',
-    count: items.length, status: 'directory',
+    count: directory.length, status: 'directory',
   }] } }));
   await page.route('**/api/tv/instruments?*', route => {
     const params = new URL(route.request().url()).searchParams;
     const pageNumber = Number(params.get('page') || 0), size = Number(params.get('pageSize') || 6);
     return route.fulfill({ json: {
-      items: items.slice(pageNumber * size, (pageNumber + 1) * size),
-      total: items.length, directoryTotal: items.length, page: pageNumber, pageSize: size,
+      items: directory.slice(pageNumber * size, (pageNumber + 1) * size),
+      total: directory.length, directoryTotal: directory.length, page: pageNumber, pageSize: size,
     } });
   });
   await page.route('**/api/tv/snapshot?*', route => {
     const params = new URL(route.request().url()).searchParams;
     const symbols: string[] = JSON.parse(params.get('symbols') || '[]');
     // Reserve AAPL for All Stocks so the logo test can intercept its first load.
-    const selected = symbols.length ? items.filter(item => symbols.includes(item.symbol)) : items.slice(1, 7);
+    const selected = symbols.length ? directory.filter(item => symbols.includes(item.symbol)) : directory.slice(1, 7);
     const quotes = selected.map(item => ({
       ...item, price: item.symbol === 'QA1' ? 0.939 : 123.45,
       source: 'Presentation QA source',
@@ -213,8 +213,8 @@ test('stock movements, logo failure, and remote selection stay understandable wi
     await expect.poll(() => logoRequested).toBe(true);
     const pending = page.locator('.tv-all-stocks .tv-hall-row').first().locator('.tv-asset-icon');
     await expect(pending).toHaveAttribute('data-logo-state', 'loading');
-    await expect(pending.locator(':scope > svg')).toBeVisible();
-    await expect(pending.locator(':scope > b')).toHaveText('AAPL');
+    await expect(pending.locator('.tv-ticker-lettering')).toBeVisible();
+    await expect(pending.locator('.tv-ticker-lettering')).toHaveText('AAPL');
     await expect(pending.locator('img')).toHaveCSS('opacity', '0');
     const box = await pending.boundingBox();
     expect(box).not.toBeNull();
@@ -245,13 +245,13 @@ test('stock movements, logo failure, and remote selection stay understandable wi
   await expect(apple).toHaveAttribute('data-logo-state', 'loaded');
   await expect(logo).toBeVisible();
   await expect.poll(() => logo.evaluate(image => image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0)).toBe(true);
-  await expect(apple.locator(':scope > svg, :scope > b')).toHaveCount(0);
+  await expect(apple.locator('.tv-ticker-lettering')).toHaveCount(0);
   const before = await apple.boundingBox();
   expect({ width: before?.width, height: before?.height }).toEqual(loadingSize);
   await logo.dispatchEvent('error');
   await expect(apple).toHaveAttribute('data-logo-state', 'fallback');
   await expect(apple.locator('img')).toHaveCount(0);
-  await expect(apple.locator('svg')).toBeVisible();
+  await expect(apple.locator('.tv-ticker-lettering')).toBeVisible();
   await expect(apple).toContainText('AAPL');
   const after = await apple.boundingBox();
   expect(after?.width).toBe(before?.width);
@@ -273,4 +273,58 @@ test('stock movements, logo failure, and remote selection stay understandable wi
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(target).toBeFocused();
+});
+
+test('six index images retain six distinct badges when the artwork is offline', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  const indices = [
+    ['^GSPC', 'S&P', '500', 's-and-p-500'], ['^DJI', 'DOW', '30', 'dow-30'],
+    ['^NDX', 'NDX', '100', 'nasdaq-100'], ['^FTSE', 'FTSE', '100', 'ftse-100-index'],
+    ['^GDAXI', 'DAX', '40', 'dax'], ['^N225', 'NIKKEI', '225', 'nikkei-225'],
+  ];
+  const requests = new Set<string>();
+  await page.route('https://s3-symbol-logo.tradingview.com/indices/**', route => {
+    requests.add(new URL(route.request().url()).pathname);
+    return route.abort();
+  });
+  const directory = indices.map(([symbol]) => ({ ...items[0], symbol, name: symbol, region: 'global' }));
+  await openStocks(page, 'light', undefined, directory);
+  for (const [i, [symbol, label, number, slug]] of indices.entries()) {
+    const row = page.locator('.tv-all-stocks .tv-hall-row').nth(i);
+    await expect(row.locator('.tv-asset-icon')).toHaveAttribute('data-logo-state', 'fallback');
+    await expect(row.locator('.tv-index-lettering > span')).toHaveText(label);
+    await expect(row.locator('.tv-index-lettering > strong')).toHaveText(number);
+    await expect(row.locator('.tv-hall-listing bdi')).toHaveText(symbol);
+    expect(requests.has(`/indices/${slug}--big.svg`)).toBe(true);
+  }
+});
+
+test('the photographed stock listings keep their own logos or their full exchange symbols', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  const symbols = ['SVIX', 'GANESHHOU', '600370', '603359', '600053', '603378'];
+  const directory = symbols.map((symbol, i) => ({ ...items[0], name: symbol, symbol,
+    region: i === 0 ? 'US' : i === 1 ? 'TD_XNSE' : 'SSE' }));
+  const requested = new Set<string>();
+  for (const host of ['s3-symbol-logo.tradingview.com', 'www.jdcapital.com', 'financialmodelingprep.com']) {
+    await page.route(`https://${host}/**`, route => {
+      requested.add(route.request().url());
+      return route.abort();
+    });
+  }
+  await openStocks(page, 'dark', undefined, directory);
+  const rows = page.locator('.tv-all-stocks .tv-hall-row');
+  for (const [i, symbol] of symbols.entries()) {
+    const row = rows.nth(i);
+    await expect(row.locator('.tv-hall-listing bdi')).toHaveText(symbol);
+    const mark = row.locator('.tv-asset-icon');
+    if (i < 2) {
+      await expect(mark).toHaveAttribute('data-logo-state', 'loaded');
+      await expect(mark.locator('img')).toHaveAttribute('src', i === 0 ? './markets-tv/assets/svix.png' : './markets-tv/assets/ganeshhousing.webp');
+    } else {
+      await expect(mark).toHaveAttribute('data-logo-state', 'fallback');
+      await expect(mark.locator('.tv-ticker-lettering')).toHaveText(symbol);
+      expect(requested.has(`https://financialmodelingprep.com/image-stock/${symbol}.SS.png`)).toBe(true);
+      expect(requested.has(`https://financialmodelingprep.com/image-stock/${symbol}.png`)).toBe(false);
+    }
+  }
 });

@@ -11,12 +11,13 @@ import { TvQuoteEvidence as QuoteEvidence } from './TvQuoteEvidence';
 import { TvOverview } from './TvOverview';
 import { TvWholeTicker as SceneTicker } from './TvWholeTicker';
 import { TvAssetIcon } from './TvAssetIcon';
+import { TvCryptoPager } from './TvCryptoPager';
 import { TvSceneSidebar } from './TvSceneSidebar';
 import { useTvPanelCount } from './useTvBroadcastPage';
 
 type SceneSnapshot = TvSnapshot & { summary?: TvQuote[]; selectionTotal?: number };
 type Props = {
-  overview?: boolean; sessionIds?: string[]; snapshot: SceneSnapshot | null; loading: boolean; error: string | null; language: TvLanguage;
+  cryptoPage?: number; onCryptoPage?: (page: number) => void; overview?: boolean; sessionIds?: string[]; snapshot: SceneSnapshot | null; loading: boolean; error: string | null; language: TvLanguage;
   now: number; news: TvNews[]; newsLoading?: boolean; newsError?: string | null; linked: boolean; watchlist: boolean;
   ticker: boolean; tickerPaused: boolean; speed: number;
   onQuote: (quote: TvQuote) => void; onStory: (story: TvNews) => void;
@@ -43,7 +44,7 @@ function SummaryQuote({ quote, language, now, select }: { quote: TvQuote; langua
   </button>;
 }
 
-export const TvSceneDashboard = memo(function TvSceneDashboard({ overview = false, sessionIds, snapshot, loading, error, language, now, news, newsLoading, newsError, linked, watchlist, ticker, tickerPaused, speed, onQuote, onStory, onPair, onRefresh, onTickerPause }: Props) {
+export const TvSceneDashboard = memo(function TvSceneDashboard({ cryptoPage = 0, onCryptoPage, overview = false, sessionIds, snapshot, loading, error, language, now, news, newsLoading, newsError, linked, watchlist, ticker, tickerPaused, speed, onQuote, onStory, onPair, onRefresh, onTickerPause }: Props) {
   const [view, setView] = useState<'list' | 'heatmap'>('list');
   const listButton = useRef<HTMLButtonElement>(null);
   const { ref: rowViewport, count: visibleRows } = useTvPanelCount(6, 2.25, 0);
@@ -66,7 +67,7 @@ export const TvSceneDashboard = memo(function TvSceneDashboard({ overview = fals
         : <p className="tv-scene-summary-empty">{s('noSummaries')}</p>)}
     </section>}
       <section className="tv-scene-quotes" aria-labelledby="tv-scene-quotes-title">
-        <div className="tv-scene-panel-heading"><div><h2 id="tv-scene-quotes-title">{snapshot?.scene && <>{s(snapshot.scene)} · </>}{s(view === 'list' ? 'quoteList' : 'heatmap')}</h2><p>{s(watchlist ? 'watchlistPrices' : 'marketSample')}</p></div>
+        <div className="tv-scene-panel-heading"><div><h2 id="tv-scene-quotes-title">{snapshot?.scene && <>{s(snapshot.scene)} · </>}{s(view === 'list' ? 'quoteList' : 'heatmap')}</h2>{onCryptoPage ? <TvCryptoPager requestedPage={cryptoPage} snapshot={snapshot} language={language} move={onCryptoPage}/> : <p>{s(watchlist ? 'watchlistPrices' : 'marketSample')}</p>}</div>
           <div className="tv-scene-view-buttons" role="group" aria-label={t('layout')}>
             <button ref={listButton} onClick={() => setView('list')} aria-pressed={view === 'list'} aria-label={s('quoteList')} data-tv-focus-key="scene-list"><List aria-hidden="true"/><span>{s('quoteList')}</span></button>
             <button onClick={() => setView('heatmap')} aria-pressed={view === 'heatmap'} aria-label={s('heatmap')} data-tv-focus-key="scene-heatmap"><LayoutGrid aria-hidden="true"/><span>{s('heatmap')}</span></button>

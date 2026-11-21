@@ -20,7 +20,7 @@ export async function GET(request: Request) {
   const scene = params.get('scene') as TvScene | null;
   if (!Number.isInteger(page) || page < 0 || page > 1_000_000 || !Number.isInteger(pageSize) || pageSize < 1 || pageSize > 12 || market && !/^[A-Z_a-z0-9]{1,32}$/.test(market)) return tvJson({ code: 'INVALID_QUERY' }, 400);
   if (!TV_GROUPS.includes(group as TvGroup)) return tvJson({ code: 'INVALID_GROUP' }, 400);
-  if (scene && (!Object.hasOwn(TV_SCENE_GROUP, scene) || TV_SCENE_GROUP[scene] !== group || market || params.has('symbols') || params.has('listingKeys') || page !== 0)) {
+  if (scene && (!Object.hasOwn(TV_SCENE_GROUP, scene) || TV_SCENE_GROUP[scene] !== group || market || params.has('symbols') || params.has('listingKeys') || (page !== 0 && scene !== 'crypto'))) {
     return tvJson({ code: 'INVALID_QUERY' }, 400);
   }
   let selected: string[] | undefined;

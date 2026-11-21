@@ -125,7 +125,7 @@ export default function App() {
       </TVFocusGuideView>
       <NativeTickerMotion.Provider value={rotation && !pairDialog && !guide}><View style={s.content}>
         {foreground && (destination === 'brief' ? <NativeBriefPanel revision={revision} page={page} changePage={changePage}/>
-          : destination === 'map' ? <NativeAtlasPanel now={now} selected={region} onSelect={chooseRegion}/>
+          : destination === 'map' ? <NativeAtlasPanel suspended={guide || pairDialog || !foreground} autoRotate={rotation} now={now} selected={region} onSelect={chooseRegion}/>
           : destination === 'account' ? <NativeAccountPanel/>
           : destination === 'allStocks' ? <StocksPanel key={`${destination}:${region || 'world'}`} kuwait={false} region={region} page={page} changePage={changePage} revision={revision}/>
           : destination === 'forex' ? <StocksPanel key={destination} forex kuwait={false} page={page} changePage={changePage} revision={revision}/>

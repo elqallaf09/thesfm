@@ -2,7 +2,16 @@ import 'server-only';
 
 import { createFinancialNewsProviders } from './registry';
 import { createRssNewsProvider } from './providers/rss';
+import { matchesRegionalIpo } from './specialMatching';
 import { TOPICS, type TopicId } from './specialTopics';
+import {
+  IPO_REGIONS,
+  ipoEditionFeedUrl,
+  ipoGlobalPublisherFeedUrl,
+  ipoRegionalPublisherFeedUrl,
+  isIpoTopic,
+  type IpoTopicId,
+} from './ipoRegions';
 
 // Search the topic at the source. Filtering an index/central-bank feed locally
 // cannot recover company news that the feed never contained.
@@ -21,7 +30,53 @@ export function specialNewsFeedUrl(topic: TopicId, language: 'en' | 'ar') {
   return url.toString();
 }
 
+function googleRss(topic: IpoTopicId, id: string, name: string, url: string, marketCodes: string[], language: string, reliabilityScore: number) {
+  return createRssNewsProvider({
+    id, name, url,
+    acceptItem: item => matchesRegionalIpo(topic, item),
+    sourceType: 'public_rss',
+    priority: 3,
+    reliabilityScore,
+    officialSource: false,
+    sourceNetworkId: 'news.google.com',
+    supportedMarkets: marketCodes,
+    marketCodes,
+    // The RSS parser keeps each item's real publisher; nothing is assigned
+    // from the search terms.
+    originalLanguage: language,
+    revalidateSeconds: 300,
+    timeoutMs: 6_000,
+  });
+}
+
+// Regional IPO coverage draws on several independent references at once:
+// each regional edition, region-specialist outlets, global wires scoped to the
+// region's venues, and first-party exchange/regulator feeds when available.
+function createIpoNewsProviders(topic: IpoTopicId) {
+  const region = IPO_REGIONS[topic];
+  const { marketCodes } = region;
+  const editions = region.editions.map(edition => googleRss(
+    topic, `rss-ipo-${topic}-${edition.country.toLowerCase()}-${edition.language}`,
+    `Google News — ${topic} (${edition.country}/${edition.language})`,
+    ipoEditionFeedUrl(topic, edition), marketCodes, edition.language, 0.65,
+  ));
+  const publishers = [
+    googleRss(topic, `rss-ipo-${topic}-regional-publishers`, `Specialist publishers — ${topic}`,
+      ipoRegionalPublisherFeedUrl(topic), marketCodes, region.editions[0].language, 0.72),
+    googleRss(topic, `rss-ipo-${topic}-global-wires`, `Global wires — ${topic}`,
+      ipoGlobalPublisherFeedUrl(topic), marketCodes, 'en', 0.75),
+  ];
+  const official = region.registryProviderPrefixes.length === 0 ? [] : createFinancialNewsProviders({ marketCodes })
+    .filter(provider => region.registryProviderPrefixes.some(prefix => provider.id.startsWith(prefix)));
+  const keyed = topic === 'ipo-us-news'
+    ? createFinancialNewsProviders({ marketCodes }).filter(provider => provider.id === 'finnhub' || provider.id === 'newsapi')
+    : [];
+  // Start the regional feeds within the shared time budget, including Kuwait's edition.
+  return [...editions, ...official, ...publishers, ...keyed];
+}
+
 export function createSpecialNewsProviders(topic: TopicId) {
+  if (isIpoTopic(topic)) return createIpoNewsProviders(topic);
   const marketCodes = topic === 'metals-news' ? ['GLOBAL'] : ['US'];
   const targeted = (['en', 'ar'] as const).map(language => createRssNewsProvider({
     id: `rss-special-${topic}-${language}`,

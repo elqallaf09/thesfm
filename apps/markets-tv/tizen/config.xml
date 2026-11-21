@@ -9,4 +9,7 @@
   <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>
   <tizen:setting screen-orientation="landscape" context-menu="disable" background-support="disable" encryption="disable" install-location="auto" hwkey-event="enable"/>
   <access origin="https://www.the-sfm.com" subdomains="false"/>
+  <access origin="https://s3-symbol-logo.tradingview.com" subdomains="false"/>
+  <access origin="https://www.jdcapital.com" subdomains="false"/>
+  <access origin="https://financialmodelingprep.com" subdomains="false"/>
 </widget>

@@ -1,6 +1,7 @@
 import 'server-only';
 
-import { createServerSupabaseAdmin } from '@/lib/server/adminAccess';
+import { boubyanQuoteSymbol, normalizeBoubyanExchange } from '@/lib/market/boubyanReference';
+import { resolveMarketCurrency } from '@/lib/market/marketCurrency';
 import { getStockCategoryConfig, type StockCategoryId } from '@/lib/market/stockCategoryConfigs';
 import { screenGrowthStocks } from '@/lib/market/growthStockScreener';
 import { fetchTraderQuotes, type TraderQuote } from '@/lib/trader/marketQuotes';
@@ -421,69 +422,56 @@ function mapGrowthResult(limit: number, result: Awaited<ReturnType<typeof screen
   };
 }
 
-type ShariaCatalogRow = {
-  symbol?: string | null;
-  name?: string | null;
-  asset_type?: string | null;
-  exchange?: string | null;
-  sector?: string | null;
-  country?: string | null;
-  currency?: string | null;
-  shariah_status?: string | null;
-  shariah_source?: string | null;
-  shariah_reason?: string | null;
-  shariah_last_reviewed_at?: string | null;
-};
-
 async function shariaScanner(options: ScanOptions): Promise<StockCategoryScannerResult> {
-  const limit = normalizeLimit(options.limit);
-  const admin = createServerSupabaseAdmin();
-  if (!admin) return fallbackWatchlist('sharia', 'screening_storage_unavailable', limit);
-
-  const rows: ShariaCatalogRow[] = [];
-  for (let offset = 0; rows.length < MAX_RESULTS; offset += 1000) {
-    const result = await admin.from('market_symbols')
-      .select('symbol,name,asset_type,exchange,sector,country,currency,shariah_status,shariah_source,shariah_reason,shariah_last_reviewed_at')
-      .eq('is_active', true)
-      .in('asset_type', ['stock', 'etf'])
-      .order('symbol')
-      .range(offset, offset + 999);
-    if (result.error) throw new Error('sharia_catalog_read_failed');
-    rows.push(...(result.data ?? []));
-    if ((result.data?.length ?? 0) < 1000) break;
+  const { loadShariahPublicCatalog } = await import('@/lib/server/shariahPublicCatalog');
+  const catalog = await loadShariahPublicCatalog().catch(() => ({ items: [], storage: { complete: false } }));
+  const listings = new Set<string>();
+  const ambiguous = new Set<string>();
+  for (const item of catalog.items) {
+    const symbol = boubyanQuoteSymbol(item);
+    if (!symbol) continue;
+    if (listings.has(symbol)) ambiguous.add(symbol);
+    listings.add(symbol);
   }
 
-  const statusRank: Record<string, number> = { compliant: 0, needs_review: 1, unclassified: 2, non_compliant: 3 };
-  const normalizedRows = rows
-    .map(row => ({ ...row, symbol: text(row.symbol).toUpperCase(), name: text(row.name) || text(row.symbol) }))
-    .filter(row => validSymbol(row.symbol))
-    .sort((left, right) => (statusRank[text(left.shariah_status)] ?? 9) - (statusRank[text(right.shariah_status)] ?? 9) || left.symbol.localeCompare(right.symbol));
-  const selected = normalizedRows.slice(0, limit);
-  const quoteCandidates = selected.slice(0, MAX_QUOTE_ENRICHMENT);
-  const quotes = quoteCandidates.length
-    ? await fetchTraderQuotes(quoteCandidates.map(row => row.symbol), { includeHistory: false, includeNews: false }).catch(() => [])
+  const matches = catalog.storage.complete ? catalog.items.flatMap(row => {
+    if (row.assetType !== 'stock' || row.shariahStatus !== 'compliant') return [];
+    const symbol = boubyanQuoteSymbol(row);
+    return symbol && validSymbol(symbol) && !ambiguous.has(symbol) ? [{ row, symbol }] : [];
+  }).sort((left, right) => left.symbol.localeCompare(right.symbol)) : [];
+  const selected = matches.slice(0, normalizeLimit(options.limit));
+  const quoteSymbols = selected.slice(0, MAX_QUOTE_ENRICHMENT).map(item => item.symbol);
+  const quotes = quoteSymbols.length
+    ? await fetchTraderQuotes(quoteSymbols, { includeHistory: false, includeNews: false }).catch(() => [])
     : [];
   const bySymbol = quoteMap(quotes);
 
-  const items: StockCategoryScannerItem[] = selected.map(row => {
-    const quote = bySymbol.get(row.symbol);
-    const price = quote?.available ? finite(quote.price) : null;
+  const items: StockCategoryScannerItem[] = selected.map(({ row, symbol }) => {
+    const candidate = bySymbol.get(symbol);
+    const expectedCurrency = resolveMarketCurrency({ symbol, exchange: row.exchange, country: row.country }).currency;
+    const quotedSymbol = text(candidate?.providerSymbolUsed || candidate?.providerSymbol || candidate?.symbol).toUpperCase();
+    const quoteVenue = normalizeBoubyanExchange(candidate?.exchangeCode) ?? normalizeBoubyanExchange(candidate?.exchange);
+    const venue = normalizeBoubyanExchange(row.exchange) ?? row.canonicalSecurityId?.split(':')[0];
+    const currency = candidate?.currency || expectedCurrency || '';
+    const quote = candidate?.available && quotedSymbol === symbol && (!quoteVenue || venue === quoteVenue)
+      && currency && (!expectedCurrency || currency === expectedCurrency) && (finite(candidate.price) ?? 0) > 0 ? candidate : null;
     return {
-      symbol: row.symbol,
-      name: quote?.name && quote.name !== row.symbol ? quote.name : row.name,
+      symbol,
+      name: row.name,
       category: 'sharia',
-      price,
-      currency: quote?.currency || text(row.currency) || 'USD',
-      change: quote?.available ? finite(quote.change) : null,
-      changePercent: quote?.available ? finite(quote.changePercent) : null,
-      source: quote?.source ?? 'SFM Sharia screening catalog',
+      price: quote ? finite(quote.price) : null,
+      currency: quote?.currency || expectedCurrency || '',
+      change: finite(quote?.change),
+      changePercent: finite(quote?.changePercent),
+      source: quote?.source ?? row.screeningSource ?? 'SFM Sharia screening catalog',
       delayed: quote?.delayed ?? true,
-      available: Boolean(quote?.available && price !== null && price > 0),
-      ...(!quote?.available ? { unavailableReason: quote?.unavailableReason ?? 'quote_not_enriched' } : {}),
-      sector: text(row.sector) || null,
-      industry: null,
-      exchange: quote?.exchange ?? (text(row.exchange) || null),
-      country: text(row.country) || null,
+      available: Boolean(quote),
+      quoteEnriched: Boolean(quote),
+      ...(!quote ? { unavailableReason: candidate?.unavailableReason ?? 'quote_not_verified' } : {}),
+      sector: row.sector || null,
+      industry: row.industry || null,
+      exchange: row.exchange || venue || null,
+      country: row.country || null,
       marketCap: finite(quote?.marketCap),
       volume: finite(quote?.volume),
       beta: null,
@@ -494,10 +482,10 @@ async function shariaScanner(options: ScanOptions): Promise<StockCategoryScanner
       operatingIncomeGrowthPercent: null,
       netIncomeGrowthPercent: null,
       growthPeriod: null,
-      shariahStatus: text(row.shariah_status) || 'unclassified',
-      shariahSource: text(row.shariah_source) || null,
-      shariahLastReviewedAt: text(row.shariah_last_reviewed_at) || null,
-      classificationReason: text(row.shariah_reason) || 'Persisted SFM screening status',
+      shariahStatus: row.shariahStatus,
+      shariahSource: row.screeningSource,
+      shariahLastReviewedAt: row.lastScreenedAt,
+      classificationReason: row.reason.en,
       screenBasis: 'shariah_catalog',
     };
   });
@@ -505,18 +493,15 @@ async function shariaScanner(options: ScanOptions): Promise<StockCategoryScanner
   return {
     category: 'sharia',
     mode: 'shariah_catalog',
-    source: 'SFM persisted Sharia screening catalog + market quote providers',
+    source: 'SFM public Sharia screening catalog + market quote providers',
     updatedAt: new Date().toISOString(),
-    universeCount: rows.length,
-    matchedCount: normalizedRows.length,
+    universeCount: catalog.items.length,
+    matchedCount: matches.length,
     returnedCount: items.length,
     availableCount: items.filter(item => item.available).length,
-    quoteEnrichedCount: items.filter(item => item.changePercent !== null).length,
-    criteria: {
-      universe: 'All active stock/ETF rows persisted in market_symbols',
-      methodology: 'Use persisted SFM screening status; never infer compliance from sector or price',
-    },
-    degradedReason: null,
+    quoteEnrichedCount: items.filter(item => item.quoteEnriched).length,
+    criteria: { assetType: 'stock', status: 'compliant', source: 'public_screening_catalog' },
+    degradedReason: catalog.storage.complete ? null : 'screening_catalog_incomplete',
     items,
   };
 }
@@ -591,13 +576,7 @@ async function loadStockCategory(category: StockCategoryId, options: ScanOptions
     }
   }
 
-  if (category === 'sharia') {
-    try {
-      return await shariaScanner({ ...options, limit });
-    } catch (error) {
-      return fallbackWatchlist(category, safeError(error), limit);
-    }
-  }
+  if (category === 'sharia') return shariaScanner({ ...options, limit });
 
   try {
     return await dynamicUsScanner(category, { ...options, limit });

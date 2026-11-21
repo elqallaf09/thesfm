@@ -76,6 +76,10 @@
  .tv-screen .tv-scene-sidebar .tv-scene-headlines .tv-news-title { font-size:clamp(18px,min(1.05vw,1.85vh),28px); -webkit-line-clamp:3; }
  .tv-screen .tv-scene-sidebar .tv-scene-headlines .tv-news-evidence { font-size:max(14px,.72em); }
 }
+@media(min-width:761px) and (min-height:700px) {
+ .tv-scene-sidebar .tv-news-board:is([data-news-count="2"],[data-news-count="3"]) .tv-news-grid { grid-template-columns:minmax(0,1fr); }
+ .tv-screen .tv-scene-sidebar .tv-news-board:is([data-news-count="2"],[data-news-count="3"]) .tv-news-card { grid-template-columns:minmax(0,36%) minmax(0,1fr); }
+}
 @media(max-width:760px) {
  .tv-screen .tv-news-board[data-news-count] .tv-news-grid { grid-template-columns:1fr; grid-auto-rows:auto; }
  .tv-screen .tv-news-board .tv-news-card { grid-template-columns:clamp(84px,26%,140px) minmax(0,1fr); min-height:126px; padding:.8em; }

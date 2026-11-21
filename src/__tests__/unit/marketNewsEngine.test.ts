@@ -531,6 +531,30 @@ describe('multi-stage deduplication, independence, and conflicts', () => {
 });
 
 describe('resilient provider orchestration and stored fallback', () => {
+  it('continues a TV read from publishers when the indexed store times out', async () => {
+    const storeDeadline = new AbortController();
+    const timeout = vi.spyOn(AbortSignal, 'timeout').mockReturnValueOnce(storeDeadline.signal);
+    persistence.searchStoredNews.mockImplementationOnce(({ signal }: { signal: AbortSignal }) =>
+      new Promise(resolve => signal.addEventListener('abort', () => {
+        resolve({ stories: [], total: 0, lastSuccessfulUpdate: null, available: false });
+      }, { once: true })));
+    const publisher = provider('wire', async ({ signal }) => {
+      expect(signal?.aborted).toBe(false);
+      return [item({ providerId: 'wire' })];
+    });
+    try {
+      const pending = aggregateFinancialNews({}, {
+        storeBudgetMs: 20, providerBudgetMs: 500, providers: [publisher], skipPersistence: true,
+      });
+      expect(timeout).toHaveBeenCalledWith(20);
+      storeDeadline.abort();
+      expect((await pending).stories).toHaveLength(1);
+      expect(persistence.persistNewsItems).not.toHaveBeenCalled();
+      expect(persistence.persistProviderFetch).not.toHaveBeenCalled();
+    } finally {
+      timeout.mockRestore();
+    }
+  });
   const params: NewsFetchParams = {
     from: '2026-07-01', to: '2026-07-10', limit: 20, marketCodes: ['US'], language: 'en',
   };

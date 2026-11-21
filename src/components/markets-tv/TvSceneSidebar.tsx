@@ -1,6 +1,7 @@
 'use client';
 import { useId } from 'react';
 import type { TvLanguage, TvNews, TvQuote, TvSnapshot } from '@/lib/markets-tv/types';
+import { receiverText } from '@/lib/markets-tv/receiver';
 import { tvText } from '@/lib/markets-tv/i18n';
 import { quoteStatus } from '@/lib/markets-tv/quotes';
 import { tvSceneChange, tvSceneHasPrice, tvSceneText } from '@/lib/markets-tv/scene-display';
@@ -10,10 +11,10 @@ import { TvDataNotice } from './TvDataNotice';
 import { TvBroadcastPager } from './TvBroadcastPager';
 import { useTvBroadcastPage, useTvPanelCount } from './useTvBroadcastPage';
 
-export function TvHeadlines({ news, language, now, onStory, newsLoading, newsError, onRetry }: { news: TvNews[]; language: TvLanguage; now: number; onStory: (story: TvNews) => void; playing?: boolean; newsLoading?: boolean; newsError?: string | null; onRetry?: () => void }) {
+export function TvHeadlines({ news, title, language, now, onStory, newsLoading, newsError, onRetry }: { news: TvNews[]; title?: string; language: TvLanguage; now: number; onStory: (story: TvNews) => void; playing?: boolean; newsLoading?: boolean; newsError?: string | null; onRetry?: () => void }) {
  const id=useId();
  return <section className="tv-scene-headlines tv-news-board" aria-labelledby={id} data-news-count={news.length}>
-  <header className="tv-broadcast-heading tv-news-heading"><h2 id={id}>{tvText(language,'news')}</h2><bdi>{news.length || ''}</bdi></header>
+  <header className="tv-broadcast-heading tv-news-heading"><h2 id={id}>{title ?? tvText(language,'news')}</h2><bdi>{news.length || ''}</bdi></header>
   <div className="tv-headline-items tv-news-grid" data-tv-focus-grid>{news.length ? news.map(story=><TvNewsCard key={story.id} story={story} language={language} now={now} onStory={onStory}/>):<TvNewsStatus language={language} loading={newsLoading} error={newsError} onRetry={onRetry}/>}</div>
  </section>;
 }
@@ -31,7 +32,7 @@ export function TvSceneSidebar({ quotes, news, newsLoading, newsError, language,
  quotes:TvQuote[];news:TvNews[];newsLoading?:boolean;newsError?:string|null;language:TvLanguage;now:number;snapshot:TvSnapshot|null;loading:boolean;onStory:(story:TvNews)=>void;onQuote:(quote:TvQuote)=>void;onRefresh:()=>void;
 }){
  const s=(key:Parameters<typeof tvSceneText>[1])=>tvSceneText(language,key),missing=quotes.filter(quote=>!tvSceneHasPrice(quote));
- return <aside className="tv-scene-sidebar"><TvHeadlines news={news} newsLoading={newsLoading} newsError={newsError} onRetry={onRefresh} language={language} now={now} onStory={onStory}/><TvSceneMovers quotes={quotes} language={language} now={now} onQuote={onQuote}/>
+ return <aside className="tv-scene-sidebar"><TvHeadlines title={snapshot?.scene === 'crypto' ? receiverText(language, 'cryptoNews') : undefined} news={news} newsLoading={newsLoading} newsError={newsError} onRetry={onRefresh} language={language} now={now} onStory={onStory}/><TvSceneMovers quotes={quotes} language={language} now={now} onQuote={onQuote}/>
  <details className="tv-scene-health"><summary>{tvText(language,'provider')}</summary><p>{s('selectedCoverage')}</p><div className="tv-scene-coverage-total"><strong dir="ltr">{snapshot?`${quotes.length-missing.length} / ${quotes.length}`:'—'}</strong><span>{s('quoted')}</span></div>
  <TvDataNotice quotes={missing.length?missing:quotes} language={language} retryAt={snapshot?.retryAt} now={now} loading={loading} refresh={onRefresh}/></details></aside>;
 }

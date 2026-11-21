@@ -148,7 +148,7 @@ for (const language of ['ar', 'en', 'fr'] as const) for (const theme of ['light'
     const cards = page.locator('.tv-scene-summary');
     for (let index = 0; index < summary.length; index++) {
       const card = cards.nth(index), quote = summary[index];
-      await expect(card.locator('.tv-scene-summary-name')).toHaveText(language === 'ar' ? quote.nameAr : quote.name);
+      await expect(card.locator('.tv-scene-summary-name > span:not(.tv-asset-icon)')).toHaveText(language === 'ar' ? quote.nameAr : quote.name);
       await expect(card.locator('.tv-scene-summary-value')).toContainText(prices[index]);
       await expect(card.locator('.tv-scene-summary-price')).toHaveText(prices[index]);
       await expect(card.locator('.tv-scene-summary-value > small')).toHaveText(language === 'ar' ? 'نقطة' : 'points');

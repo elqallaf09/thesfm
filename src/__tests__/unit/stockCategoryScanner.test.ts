@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ fetch: vi.fn(), quotes: vi.fn() }));
+const mocks = vi.hoisted(() => ({ fetch: vi.fn(), quotes: vi.fn(), catalog: vi.fn() }));
 vi.mock('server-only', () => ({}));
+vi.mock('@/lib/server/shariahPublicCatalog', () => ({ loadShariahPublicCatalog: mocks.catalog }));
 vi.mock('@/lib/server/adminAccess', () => ({ createServerSupabaseAdmin: vi.fn() }));
 vi.mock('@/lib/trader/providers/fmpRuntime.server', () => ({ fmpQueuedFetch: mocks.fetch }));
 vi.mock('@/lib/trader/marketQuotes', () => ({ fetchTraderQuotes: mocks.quotes }));
@@ -61,5 +62,54 @@ describe('category scanner provider resilience', () => {
     expect(first.mode).toBe('fallback_watchlist');
     expect(first.degradedReason).toBe('fmp_company-screener_http_429');
     expect(first.items.every(item => item.price === null && !item.available)).toBe(true);
+  });
+});
+
+describe('verified Sharia stock matches', () => {
+  const bank = { symbol: 'BOUBYAN', providerSymbol: 'BOUBYAN.KW', name: 'Boubyan Bank', assetType: 'stock',
+    exchange: 'Boursa Kuwait', country: 'KW', shariahStatus: 'compliant', reason: { en: 'Published listing' } };
+  const quote = { symbol: 'BOUBYAN.KW', providerSymbolUsed: 'BOUBYAN.KW', exchange: 'XKUW',
+    currency: 'KWD', price: 0.814, available: true };
+
+  it('counts public compliant stock decisions and requests the exact Kuwait listing', async () => {
+    const items = [bank, ...['non_compliant', 'needs_review', 'unclassified'].map((shariahStatus, index) => ({
+      ...bank, symbol: `TEST${index}`, providerSymbol: null, shariahStatus,
+    })), { ...bank, symbol: 'FUND', providerSymbol: null, assetType: 'etf' }];
+    mocks.catalog.mockResolvedValue({ items, storage: { complete: true } });
+    mocks.quotes.mockResolvedValue([quote]);
+    const { screenStockCategory } = await import('@/lib/market/stockCategoryScanner');
+    const result = await screenStockCategory('sharia');
+    expect(mocks.quotes).toHaveBeenCalledWith(['BOUBYAN.KW'], expect.any(Object));
+    expect(result).toMatchObject({ universeCount: 5, matchedCount: 1, returnedCount: 1, quoteEnrichedCount: 1,
+      items: [{ name: 'Boubyan Bank', symbol: 'BOUBYAN.KW', exchange: 'Boursa Kuwait', currency: 'KWD', price: 0.814 }] });
+  });
+
+  it.each([{ providerSymbolUsed: 'BOUBYAN' }, { exchange: 'NYSE' }, { currency: 'USD' }])(
+    'discards a conflicting quote without changing the listing %j', async conflict => {
+      mocks.catalog.mockResolvedValue({ items: [bank], storage: { complete: true } });
+      mocks.quotes.mockResolvedValue([{ ...quote, ...conflict }]);
+      const { screenStockCategory } = await import('@/lib/market/stockCategoryScanner');
+      expect((await screenStockCategory('sharia')).items[0]).toMatchObject({
+        symbol: 'BOUBYAN.KW', price: null, currency: 'KWD', exchange: 'Boursa Kuwait', available: false,
+      });
+    });
+
+  it('excludes unresolved and ambiguous identities', async () => {
+    mocks.catalog.mockResolvedValue({ items: [bank, { ...bank, shariahStatus: 'non_compliant' },
+      { ...bank, symbol: 'OTHER', providerSymbol: 'OTHER.KW', exchange: 'NYSE' }], storage: { complete: true } });
+    const { screenStockCategory } = await import('@/lib/market/stockCategoryScanner');
+    expect((await screenStockCategory('sharia')).matchedCount).toBe(0);
+    expect(mocks.quotes).not.toHaveBeenCalled();
+  });
+
+  it('returns an empty degraded scan when manual overrides cannot be checked', async () => {
+    mocks.catalog.mockResolvedValueOnce({ items: [bank], storage: { complete: false } })
+      .mockRejectedValueOnce(new Error('catalog offline'));
+    const { screenStockCategory } = await import('@/lib/market/stockCategoryScanner');
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const result = await screenStockCategory('sharia', { forceRefresh: true });
+      expect(result).toMatchObject({ items: [], returnedCount: 0, matchedCount: 0, degradedReason: 'screening_catalog_incomplete' });
+    }
+    expect(mocks.quotes).not.toHaveBeenCalled();
   });
 });

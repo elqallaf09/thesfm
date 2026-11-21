@@ -189,7 +189,7 @@ export async function fetchStockCategoryNews(categoryInput: string | null | unde
     newsStocks.length ? aggregateFinancialNews(params, {
       page: 1, pageSize: 80, sort: issuerNews ? 'latest' : 'importance',
       ...(issuerNews ? { providers: shariaIssuerProviders(params) } : {}),
-      ...(options.headlinesOnly ? { providerBudgetMs: 6500, schedulePersistence: options.schedulePersistence } : {}),
+      ...(options.headlinesOnly ? { providerBudgetMs: 6500, skipStoredSearch: true, schedulePersistence: options.schedulePersistence } : {}),
     }) : null,
     options.headlinesOnly ? Promise.resolve(new Map<string, TechStockPrice>()) : fetchStockPrices(priceStocks, apiKey),
   ]);

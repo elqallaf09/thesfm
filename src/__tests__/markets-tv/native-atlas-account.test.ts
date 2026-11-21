@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import QRCode from 'qrcode';
 import { describe, expect, it } from 'vitest';
-import { TV_ATLAS_CITIES } from '@/lib/markets-tv/atlas';
+import { atlasRepresentatives, atlasStep, initialAtlasIndex, TV_ATLAS_CITIES } from '@/lib/markets-tv/atlas';
 import { nativeAtlasFormatters, nativeAtlasSize } from '../../../apps/markets-tv-native/src/nativeAtlas';
 import { NATIVE_PROFILE_URL, NATIVE_PROFILE_QR_OPTIONS } from '../../../apps/markets-tv-native/src/nativeAccount';
 
@@ -10,10 +10,23 @@ describe('native atlas projection and city clocks', () => {
     const winter = Date.parse('2026-11-20T12:00:00Z'), summer = Date.parse('2026-07-20T12:00:00Z');
     for (const language of ['ar', 'en', 'fr'] as const) {
       const cities = nativeAtlasFormatters(language);
-      expect(cities.map(({ group, city, zone, x, y }) => ({ group, city, zone, x, y }))).toEqual([...TV_ATLAS_CITIES]);
-      expect(cities.map(city => city.clock.format(winter))).toEqual(['15:00', '12:00', '07:00', '21:00']);
-      expect(cities.map(city => city.clock.format(summer))).toEqual(['15:00', '13:00', '08:00', '21:00']);
+      expect(cities).toMatchObject([...TV_ATLAS_CITIES]);
+      expect(cities.slice(0, 4).map(city => city.clock.format(winter))).toEqual(['15:00', '12:00', '07:00', '21:00']);
+      expect(cities.slice(0, 4).map(city => city.clock.format(summer))).toEqual(['15:00', '13:00', '08:00', '21:00']);
       expect(cities.every(city => city.weekday.format(winter).length > 0)).toBe(true);
+    }
+  });
+  it('matches the device clock, wraps the tour, and keeps one clock per region', () => {
+    expect(TV_ATLAS_CITIES[initialAtlasIndex(undefined, 'Asia/Bahrain')].code).toBe('bh');
+    expect(TV_ATLAS_CITIES[initialAtlasIndex('europe', 'Europe/Rome')].code).toBe('it');
+    expect(TV_ATLAS_CITIES[initialAtlasIndex('europe', 'Asia/Kuwait')].code).toBe('gb');
+    expect(TV_ATLAS_CITIES[initialAtlasIndex(undefined, 'UTC')].code).toBe('kw');
+    expect(atlasStep(0, -1)).toBe(TV_ATLAS_CITIES.length - 1);
+    expect(atlasStep(TV_ATLAS_CITIES.length - 1, 1)).toBe(0);
+    for (const city of TV_ATLAS_CITIES) {
+      const clocks = atlasRepresentatives(TV_ATLAS_CITIES, city);
+      expect(clocks).toContain(city);
+      expect(new Set(clocks.map(item => item.group)).size).toBe(4);
     }
   });
   it('fits the 2:1 map within both 1080p and 720p layouts without stretching the pin coordinate space', () => {

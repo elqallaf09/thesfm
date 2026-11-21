@@ -16,6 +16,7 @@ export const TR_NAV: Record<string, TranslationEntry> = {
   nav_group_invest_market: { ar:'الاستثمار والسوق', en:'Investment & Market', fr:'Investissement et marché' },
   nav_group_market_news: { ar:'أخبار الأسواق', en:'Market News', fr:'Actualités des marchés' },
   nav_subgroup_regional_markets: { ar:'الأسواق والمناطق', en:'Regional & Market', fr:'Régional et marché' },
+  nav_subgroup_ipos: { ar:'الاكتتابات', en:'IPOs', fr:'Introductions en Bourse' },
   nav_subgroup_sector_strategy: { ar:'القطاعات والاستراتيجيات', en:'Sector & Strategy', fr:'Secteur et stratégie' },
   nav_group_business_projects: { ar:'الأعمال والمشاريع', en:'Business & Projects', fr:'Affaires et projets' },
   nav_group_charity: { ar:'الزكاة والأعمال الخيرية', en:'Zakat & Charity', fr:'Zakat et charité' },

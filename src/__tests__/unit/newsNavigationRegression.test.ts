@@ -46,10 +46,10 @@ describe('unified market-news subgroup rendering', () => {
     expect(mobile).toContain('item.sectionLabelKey');
   });
 
-  it('places exactly the two documented subsections at the documented boundaries', () => {
+  it('places exactly the three documented subsections at the documented boundaries', () => {
     const marketNews = NAV_GROUPS.find(group => group.id === 'market-news');
     const labeled = marketNews?.items.filter(item => item.sectionLabelKey) ?? [];
-    expect(labeled.map(item => item.id)).toEqual(['tech-news', 'energy-stocks']);
+    expect(labeled.map(item => item.id)).toEqual(['tech-news', 'ipo-us-news', 'energy-stocks']);
   });
 
   it('includes all dedicated regional, special, and intelligence news destinations', () => {
@@ -66,6 +66,7 @@ describe('unified market-news subgroup rendering', () => {
     expect(destinations.get('analyst-ratings-news')).toBe('/analyst-ratings-news');
     expect(destinations.get('mergers-acquisitions-news')).toBe('/mergers-acquisitions-news');
     expect(destinations.get('unusual-moves-news')).toBe('/unusual-moves-news');
+    for (const topic of ['ipo-us-news', 'ipo-asia-news', 'ipo-europe-news', 'ipo-uk-news', 'ipo-gulf-news', 'ipo-arab-news']) expect(destinations.get(topic)).toBe(`/${topic}`);
   });
 
   it('uses the shared moving ticker with colored percentage changes for special news pages', () => {

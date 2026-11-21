@@ -17,6 +17,7 @@ type UnknownRecord = Record<string, unknown>;
 export type StoredNewsSort = 'latest' | 'importance' | 'official' | 'relevance';
 
 export type StoredNewsSearchParams = {
+  signal?: AbortSignal;
   query?: string | null;
   page?: number;
   pageSize?: number;
@@ -330,20 +331,19 @@ export async function searchStoredNews(params: StoredNewsSearchParams = {}): Pro
       query = query.order('earliest_published_at', { ascending: false }).order('importance_score', { ascending: false });
     }
 
-    const [storyResult, healthResult] = await Promise.all([
-      query.range(offset, offset + pageSize - 1),
-      admin
-        .from('market_news_source_health')
-        .select('last_successful_fetch')
-        .not('last_successful_fetch', 'is', null)
-        .order('last_successful_fetch', { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-    ]);
-
-    if (storyResult.error) {
-      return { stories: [], total: 0, lastSuccessfulUpdate: null, available: false };
+    const stories = query.range(offset, offset + pageSize - 1);
+    const health = admin.from('market_news_source_health')
+      .select('last_successful_fetch')
+      .not('last_successful_fetch', 'is', null)
+      .order('last_successful_fetch', { ascending: false })
+      .limit(1);
+    if (params.signal) {
+      stories.abortSignal(params.signal);
+      health.abortSignal(params.signal);
     }
+    const [storyResult, healthResult] = await Promise.all([stories, health.maybeSingle()]);
+
+    if (storyResult.error) throw storyResult.error;
 
     return {
       stories: (storyResult.data ?? []).map(storedStoryFromRow).filter((story): story is ConsolidatedNewsStory => Boolean(story)),

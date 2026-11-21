@@ -5,6 +5,11 @@
   color: var(--foreground);
 }
 
+.shell[data-category='sharia'] .card {
+  content-visibility: auto;
+  contain-intrinsic-block-size: auto 260px;
+}
+
 .container {
   width: min(100%, 1480px);
   margin: 0 auto;

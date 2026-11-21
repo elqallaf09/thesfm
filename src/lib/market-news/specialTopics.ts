@@ -1,4 +1,5 @@
 import type { NewsFetchParams } from './types';
+import { IPO_REGIONS, IPO_TOPIC_IDS, ipoTopicQuery, type IpoTopicId } from './ipoRegions';
 
 export type TopicId =
   | 'federal-reserve'
@@ -9,7 +10,8 @@ export type TopicId =
   | 'earnings-news'
   | 'analyst-ratings-news'
   | 'mergers-acquisitions-news'
-  | 'unusual-moves-news';
+  | 'unusual-moves-news'
+  | IpoTopicId;
 
 type TopicConfig = {
   query: string;
@@ -29,6 +31,13 @@ export type StaticTickerConfig = {
 export type MetalTickerConfig = StaticTickerConfig & {
   id: 'gold' | 'silver' | 'copper' | 'platinum' | 'palladium';
 };
+
+const IPO_TOPICS = Object.fromEntries(IPO_TOPIC_IDS.map(topic => [topic, {
+  query: ipoTopicQuery(),
+  days: IPO_REGIONS[topic].days,
+  sort: 'latest',
+  params: { marketCodes: IPO_REGIONS[topic].marketCodes },
+} satisfies TopicConfig])) as Record<IpoTopicId, TopicConfig>;
 
 export const TOPICS: Record<TopicId, TopicConfig> = {
   'federal-reserve': {
@@ -102,4 +111,5 @@ export const TOPICS: Record<TopicId, TopicConfig> = {
       marketCodes: ['US'],
     },
   },
+  ...IPO_TOPICS,
 };

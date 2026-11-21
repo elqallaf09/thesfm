@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { BOUBYAN_REFERENCE } from '@/lib/market/boubyanReferenceMetadata';
 import type { BoubyanReferenceProvenance } from '@/lib/market/boubyanReference';
 import {
-  createShariahNewsLookup, isSecurityScreeningStale, reconcileShariahSecurities,
+  compliantTickerQuotes, createShariahNewsLookup, isSecurityScreeningStale, reconcileShariahSecurities,
   securityAnalysisSymbol, securityKey, securityMarket, securityResearchQuery,
   screeningCatalogWarning, matchesSecurityAnalysisResult,
-  type ScreeningItem, type ShariahQuote,
+  type ScreeningItem, type ScreeningResponse, type ShariahQuote,
 } from '@/components/shariah-stocks/shariahStockPresentation';
 
 function screening(symbol: string, exchange: string | null, extra: Partial<ScreeningItem> = {}): ScreeningItem {
@@ -147,4 +147,15 @@ describe('Published reference review dates and safe actions', () => {
     expect(screeningCatalogWarning({ code: 'SCREENING_CATALOG_DEGRADED' }, 'en')).toContain('manual decisions');
     expect(screeningCatalogWarning({}, 'fr')).toBe('');
   });
+});
+
+it('keeps the price strip aligned with verified stock decisions without trimming research results', () => {
+  const items = [screening('PASS', 'NASDAQ'), screening('REVIEW', 'NYSE', { shariahStatus: 'needs_review' }),
+    screening('FAIL', 'NYSE', { shariahStatus: 'non_compliant' }), screening('FUND', 'NASDAQ', { assetType: 'etf' })];
+  const quotes = [...items.map(row => quote(row.symbol, row.exchange ?? null)), quote('EXTRA', 'NYSE'), quote('PASS', 'QSE')];
+  const response = { ok: true, items } as ScreeningResponse;
+  expect(compliantTickerQuotes(response, quotes).map(item => item.symbol)).toEqual(['PASS']);
+  expect(compliantTickerQuotes(response, [quote('PASS', 'NASDAQ', { shariahStatus: 'needs_review' })])).toEqual([]);
+  expect(compliantTickerQuotes({ ...response, catalogStorage: { state: 'error', complete: false, manualOverridesChecked: false, loadedRows: 0 } }, quotes)).toEqual([]);
+  expect(reconcileShariahSecurities(items, quotes).map(item => item.symbol)).toContain('FAIL');
 });
