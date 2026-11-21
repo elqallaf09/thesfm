@@ -133,7 +133,9 @@ async function main() {
   if (process.argv[2] === '--supabase-local') {
     const url = process.env.PLAYWRIGHT_SUPABASE_UPSTREAM_URL;
     const upstream = assertLocalRequest(url, url);
-    await startHttpsLoopbackProxy({ cert, key, upstreamPort: Number(upstream.port), listenPort: 3444 });
+    const proxy = await startHttpsLoopbackProxy({ cert, key, upstreamPort: Number(upstream.port), listenPort: 0 });
+    const address = proxy.address();
+    console.log(`https://${address.address}:${address.port}`);
     return;
   }
   const nextCli = require.resolve('next/dist/bin/next');

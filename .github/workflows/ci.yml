@@ -367,9 +367,17 @@ jobs:
           PLAYWRIGHT_SUPABASE_UPSTREAM_URL: ${{ steps.local-auth.outputs.NEXT_PUBLIC_SUPABASE_URL }}
           LOCAL_ANON_KEY: ${{ steps.local-auth.outputs.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
         run: |
-          node scripts/playwright-https-proxy.mjs --supabase-local > "$RUNNER_TEMP/sfm-api-proxy.log" 2>&1 &
+          api_address="$RUNNER_TEMP/sfm-api-origin"
+          node scripts/playwright-https-proxy.mjs --supabase-local > "$api_address" &
           api_pid=$!
-          api_origin=https://127.0.0.1:3444
+          for attempt in {1..50}; do
+            kill -0 "$api_pid" || exit 1
+            [[ -s "$api_address" ]] && break
+            sleep 0.2
+          done
+          read -r api_origin < "$api_address"
+          sudo install -m 644 "$PLAYWRIGHT_TLS_CERT_PATH" /usr/local/share/ca-certificates/sfm-smoke-loopback.crt
+          sudo update-ca-certificates
           curl --silent --show-error --fail --retry 10 --retry-connrefused \
             --cacert "$PLAYWRIGHT_TLS_CERT_PATH" -H "apikey: $LOCAL_ANON_KEY" \
             "$api_origin/auth/v1/health" > /dev/null
@@ -378,6 +386,8 @@ jobs:
           echo "NODE_EXTRA_CA_CERTS=$PLAYWRIGHT_TLS_CERT_PATH" >> "$GITHUB_ENV"
       - name: Verify WebKit Secure-cookie transport
         env:
+          PLAYWRIGHT_SUPABASE_HTTPS_ORIGIN: ${{ steps.local-api.outputs.origin }}
+          PLAYWRIGHT_SUPABASE_ANON_KEY: ${{ steps.local-auth.outputs.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           PLAYWRIGHT_TLS_CERT_PATH: ${{ runner.temp }}/playwright-tls/cert.pem
           PLAYWRIGHT_TLS_KEY_PATH: ${{ runner.temp }}/playwright-tls/key.pem
         run: node scripts/verify-playwright-https-cookie.mjs

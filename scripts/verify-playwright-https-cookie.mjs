@@ -60,6 +60,18 @@ try {
   const page = await browser.newPage({ ignoreHTTPSErrors: true });
   const origin = `https://127.0.0.1:${proxyAddress.port}`;
   await page.goto(`${origin}/set`);
+  if (process.env.PLAYWRIGHT_SUPABASE_HTTPS_ORIGIN) {
+    const api = new URL(process.env.PLAYWRIGHT_SUPABASE_HTTPS_ORIGIN);
+    const key = process.env.PLAYWRIGHT_SUPABASE_ANON_KEY;
+    if (api.protocol !== 'https:' || api.hostname !== '127.0.0.1' || !api.port || api.href !== api.origin + '/' || !key) {
+      throw new Error('Expected a local TLS origin and the disposable anonymous API key.');
+    }
+    const available = await page.evaluate(async ({ url, key }) => {
+      const response = await fetch(url, { headers: { apikey: key }, redirect: 'error' });
+      return response.ok;
+    }, { url: new URL('/auth/v1/health', api).href, key });
+    if (!available) throw new Error('WebKit could not read the local Auth API from the HTTPS app origin.');
+  }
   await page.goto(`${origin}/check`);
   const result = JSON.parse(await page.textContent('body'));
   if (!Array.isArray(result.cookieNames) || !result.cookieNames.includes('sfm_https_probe')) {
