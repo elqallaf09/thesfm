@@ -61,6 +61,7 @@ export type RssNewsProviderConfig = {
   timeoutMs?: number;
   maxBytes?: number;
   preserveArticleHash?: boolean;
+  acceptItem?: (item: NormalizedNewsItem) => boolean;
   /** Domains that are allowed to retain first-party exchange attribution per item. */
   officialSourceDomains?: string[];
   eventType?: FinancialEventType;
@@ -237,7 +238,8 @@ export class RssFinancialNewsProvider implements FinancialNewsProvider {
       }
       const parsed = parseFinancialNewsFeed(response.text, this.parserMetadata());
       this.runtime.recordSuccess(startedAt);
-      return deduplicateProviderItems(parsed.items);
+      const { acceptItem } = this.config;
+      return deduplicateProviderItems(acceptItem ? parsed.items.filter(acceptItem) : parsed.items);
     } catch (error) {
       const providerError = asProviderError(error, this.id);
       this.runtime.recordFailure(startedAt, providerError);

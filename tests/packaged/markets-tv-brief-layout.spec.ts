@@ -170,3 +170,40 @@ test('recent prices without comparable changes retain their timestamps and never
   await expect(page.locator('.tv-brief-sample-quote time')).toHaveCount(2);
   await expect(page.locator('.tv-brief-excluded')).toHaveText(['Change unavailable', 'Different change period']);
 });
+
+test('regional brief opens on Kuwait, keeps a missing benchmark visible and pages to world indices', async ({ page }) => {
+  await page.setViewportSize({ width: 1536, height: 872 });
+  await page.clock.install({ time: new Date('2026-11-20T17:27:00Z') });
+  await page.addInitScript(() => localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ language: 'ar' })));
+  const symbols = [
+    ['KSE:BKA', 'بورصة الكويت · السوق العام', 'KW'], ['^TASI.SR', 'تداول السعودية · تاسي', 'SA'],
+    ['DFM:DFMGI', 'سوق دبي المالي · المؤشر العام', 'AE'], ['QSE:GNRI', 'مؤشر بورصة قطر', 'QA'],
+    ['^GSPC', 'إس آند بي 500', 'US'], ['^DJI', 'داو جونز', 'US'], ['^NDX', 'ناسداك 100', 'US'],
+    ['^FTSE', 'فوتسي 100', 'GB'], ['^GDAXI', 'داكس 40', 'DE'], ['^N225', 'نيكاي 225', 'JP'],
+  ];
+  await page.route('**/api/tv/snapshot?*', route => {
+    const query = new URL(route.request().url()).searchParams;
+    const brief = query.get('group') === 'global' && query.get('market') === 'brief' && query.get('pageSize') === '10';
+    const quotes = brief ? symbols.map(([symbol, nameAr, country], i) => ({
+      symbol, name: symbol, nameAr, country, price: i === 2 ? null : 8000 + i,
+      source: i === 2 ? null : 'QA', observedAt: i === 2 ? null : observedAt, receivedAt: observedAt,
+      status: i === 2 ? 'unavailable' : 'closed', changePercent: i === 2 ? null : 1, changeBasis: 'session', currency: null,
+    })) : [];
+    return route.fulfill({ json: { group: 'global', market: brief ? 'brief' : undefined, quotes,
+      total: quotes.length, available: brief ? 9 : 0, generatedAt: observedAt } });
+  });
+  await page.route('**/api/tv/news?*', route => route.fulfill({ json: { stories: [] } }));
+  await openAndroidTvPackage(page);
+  await chooseTvDestination(page, 'brief');
+  const cards = page.locator('.tv-brief-sample-quote');
+  await expect(cards).toHaveCount(6);
+  await expect(cards.first()).toContainText('بورصة الكويت · السوق العام');
+  await expect(cards.first()).toContainText('نقطة');
+  await expect(cards.first().locator('time')).toHaveAttribute('datetime', observedAt);
+  await expect(cards.nth(2)).toContainText('غير متاح');
+  await expect(cards.nth(2).locator('time')).toHaveCount(0);
+  await expect(page.locator('.tv-brief-metrics article').nth(2)).toContainText('9 / 10');
+  await page.getByRole('button', { name: 'التالي', exact: true }).click();
+  await expect(cards).toHaveCount(4);
+  await expect(cards.last()).toContainText('نيكاي 225');
+});

@@ -216,6 +216,23 @@ export function boubyanSecurityKey(input: BoubyanReferenceInput): string | null 
   return !value.problem && value.exchange ? `${value.exchange}:${value.symbol}` : null;
 }
 
+const QUOTE_SUFFIXES: Readonly<Record<string, string>> = {
+  BOURSA_KUWAIT: '.KW', TADAWUL: '.SR', DFM: '.DU', ADX: '.AD',
+  QSE: '.QA', BAHRAIN_BOURSE: '.BH', MUSCAT: '.OM',
+};
+
+/** Use a qualified quote symbol only for an unambiguous exchange and security. */
+export function boubyanQuoteSymbol(item: BoubyanReferenceInput): string | null {
+  const key = boubyanSecurityKey(item);
+  if (!key) return null;
+  const exchange = key.slice(0, key.indexOf(':'));
+  const symbol = key.slice(key.indexOf(':') + 1);
+  const suffix = QUOTE_SUFFIXES[exchange];
+  if (suffix) return `${symbol}${suffix}`;
+  if (['NASDAQ', 'NYSE', 'AMEX', 'NYSE_ARCA', 'OTC'].includes(exchange)) return symbol;
+  return null;
+}
+
 type RowIndex = { byKey: Map<string, BoubyanReferenceRow[]>; bySymbol: Map<string, BoubyanReferenceRow[]> };
 
 function indexRows(rows: readonly BoubyanReferenceRow[]): RowIndex {

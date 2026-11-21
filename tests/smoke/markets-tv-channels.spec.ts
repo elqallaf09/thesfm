@@ -36,7 +36,7 @@ async function chooseMarket(page: Page, marketId: string) {
     await expect(mobileMarket).toHaveValue(marketId);
     return;
   }
-  const market = page.locator(`[data-tv-focus-key="market-${marketId}"]`);
+  const market = page.locator(`[data-tv-focus-key="market-options-${marketId}"]`);
   await expect(market).toBeVisible();
   await market.click();
 }

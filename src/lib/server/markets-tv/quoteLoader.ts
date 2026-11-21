@@ -21,6 +21,8 @@ import { verifiedFinnhubUsListing } from './finnhubListing';
 import { cachedTvQuote } from './quoteCache';
 import { isOwnableQuote, readOwnedTvQuote, saveOwnedTvQuote } from './ownedQuoteStore';
 import { tvIndexAlternative, withTvIndexFallback } from './indexFallback';
+import { tvGulfCashIndex } from '@/lib/markets-tv/gulfCashIndices';
+import { loadTvGulfCashIndex } from './gulfCashIndexFeed';
 import { isTvExtraIndex } from '@/lib/markets-tv/catalog';
 import { preferTvRegionalQuote, withTvRegionalFallback } from './regionalFallback';
 import { tvRegionalIdentity } from '@/lib/markets-tv/regionalQuote';
@@ -210,6 +212,8 @@ function sharedQuote(asset: TvAsset, group: TvGroup): Promise<TvQuote> {
   const verified = cachedTvQuote(key, async () => {
     // A listing with its own verified source asks it first, so Twelve Data's
     // per-minute credits stay with markets that have no other source.
+    const gulfIndex = assetType === 'index' && tvGulfCashIndex(asset.symbol);
+    if (gulfIndex) return await loadTvGulfCashIndex(gulfIndex) ?? empty(asset);
     const alternativeSource = tvAlternativeFirst(asset, assetType, group);
     const alternative = alternativeSource ? await alternativeSource(asset).catch(() => null) : null;
     if (alternative) return alternative;

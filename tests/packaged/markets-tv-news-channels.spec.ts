@@ -31,8 +31,8 @@ for (const language of ['ar','en','fr'] as const) test(`all news channels: ${lan
   const nav=page.locator('.tv-side-menu-items');
   for (let index=0;index<TV_EXTRA_NEWS_CHANNELS.length;index++) {
     const channel=TV_EXTRA_NEWS_CHANNELS[index];
-    await page.locator('[data-tv-focus-key="news-topics"]').click();
-    const target = page.locator(`[data-tv-focus-key="topic:${channel}"]`);
+    await openTvMenu(page);
+    const target = nav.locator(`[data-tv-focus-key="menu:${channel}"]`);
     for (const [width, height] of [[960,540],[1920,1080]]) {
       await page.setViewportSize({ width, height });
       await target.focus();
@@ -69,7 +69,7 @@ for (const language of ['ar','en','fr'] as const) test(`all news channels: ${lan
   await page.reload();await closeTvMenu(page);
   await expect(page.locator('[data-tv-root]')).toHaveAttribute('data-tv-view','cyclicalNews');
   await openTvMenu(page);
-  await expect(nav.locator('[aria-current=page]')).toHaveAttribute('data-tv-focus-key','menu:news');
+  await expect(nav.locator('[aria-current=page]')).toHaveAttribute('data-tv-focus-key','menu:cyclicalNews');
   await page.keyboard.press('Escape');
   await page.clock.pauseAt(new Date(await page.evaluate(()=>Date.now())+1000));
   const cards=page.locator('.tv-headline-items button');

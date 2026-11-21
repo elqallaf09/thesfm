@@ -176,12 +176,13 @@ test('every asset class has an icon and missing company artwork keeps a visible 
  await expect(page.locator('[data-position="record-0"] .tv-asset-icon img')).toHaveAttribute('src','https://cdn.simpleicons.org/amd');
  await expect(page.locator('[data-position="record-1"] .tv-asset-icon img')).toHaveAttribute('src',/silver\.webp$/);
  await expect(page.locator('[data-position="record-2"] .tv-asset-icon img')).toHaveAttribute('src',/gold\.webp$/);
- await expect(page.locator('[data-position="record-9"] .tv-asset-icon img')).toHaveAttribute('src','https://cdn.simpleicons.org/bitcoin/F7931A');
+ await expect(page.locator('[data-position="record-9"] .tv-asset-icon img')).toHaveAttribute('src','./markets-tv/assets/crypto/btc.webp');
  for(let index=3;index<9;index++)await expect(page.locator(`[data-position="record-${index}"] .tv-asset-icon svg`)).toBeVisible();
  // The shared logo renderer must keep its stock symbol when artwork is unavailable.
  await page.locator('[data-position="record-0"] .tv-asset-icon img').dispatchEvent('error');
- await expect(page.locator('[data-position="record-0"] .tv-asset-icon svg')).toBeVisible();
- await expect(page.locator('[data-position="record-0"] .tv-asset-icon b')).toHaveText('AMD');
+ const fallback = page.locator('[data-position="record-0"] .tv-ticker-lettering');
+ await expect(fallback).toBeVisible();
+ await expect(fallback).toHaveText('AMD');
  await expect(page.locator('[data-position="record-0"] .tv-portfolio-name')).toHaveText('Advanced Micro Devices Inc.');
  await page.locator('[data-position="record-1"] .tv-asset-icon img').dispatchEvent('error');
  await expect(page.locator('[data-position="record-1"] .tv-asset-icon svg')).toBeVisible();

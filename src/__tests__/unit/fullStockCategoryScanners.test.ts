@@ -29,7 +29,7 @@ describe('full stock-category scanners', () => {
     expect(source).toContain("fetchFmpArray('company-screener'");
     expect(source).toContain('limit: 10_000');
     expect(source).toContain("mode: 'dynamic_market_screener'");
-    expect(source).toContain("return await shariaScanner");
+    expect(source).toContain("return shariaScanner");
     expect(source).toContain('screenGrowthStocks()');
   });
 

@@ -1,3 +1,4 @@
+import { normalizeWallpaper, type TvWallpaper } from './wallpapers';
 import { isTvReceiverChannel, type TvReceiverChannel } from './receiver';
 import { normalizeTvSessionIds } from './sessionSelection';
 export type TvLanguage = 'ar' | 'en' | 'fr';
@@ -8,6 +9,7 @@ export type TvScene = 'overview' | 'gulf' | 'world' | 'assets' | 'crypto' | 'wat
 export type TvDisplayMode = 'viewing' | 'browse' | 'strips';
 export type TvSettings = {
   accent?: TvAccent;
+  wallpaper?: TvWallpaper;
   language: TvLanguage; theme: 'dark' | 'light'; layout: 'balanced' | 'quotes';
   displayMode?: TvDisplayMode; scene?: TvScene;
   groups: TvGroup[]; autoRotate: boolean; rotationSeconds: number; ticker: boolean; sound: boolean;
@@ -64,6 +66,7 @@ export function normalizeTvSettings(value: unknown): TvSettings {
     }
   }
   return {
+    wallpaper: normalizeWallpaper(row.wallpaper),
     accent: row.accent === 'blue' || row.accent === 'green' || row.accent === 'purple' || row.accent === 'champagne' ? row.accent : DEFAULT_TV_SETTINGS.accent,
     language: row.language === 'en' || row.language === 'fr' ? row.language : 'ar',
     theme: row.theme === 'dark' || row.theme === 'light' ? row.theme : DEFAULT_TV_SETTINGS.theme, layout: row.layout === 'quotes' ? 'quotes' : 'balanced',

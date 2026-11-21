@@ -10,8 +10,8 @@ import { tvListingKey } from '@/lib/markets-tv/listingIdentity';
 export type TvSnapshotOptions = { page?: number; pageSize?: number; market?: string; symbols?: string[]; listingKeys?: string[]; scene?: TvScene };
 
 async function buildSnapshot(group: TvGroup, ownedSymbols: string[], options: TvSnapshotOptions): Promise<TvSnapshot> {
-  if (options.scene) {
-    if (TV_SCENE_GROUP[options.scene] !== group) throw new Error('INVALID_SCENE_GROUP');
+  if (options.scene && TV_SCENE_GROUP[options.scene] !== group) throw new Error('INVALID_SCENE_GROUP');
+  if (options.scene && options.scene !== 'crypto') {
     const selection = tvSceneAssets(options.scene, ownedSymbols);
     const combined = await resolveTvQuotes([...selection.summary, ...selection.rows], group);
     const summary = combined.slice(0, selection.summary.length), quotes = combined.slice(selection.summary.length);
@@ -32,7 +32,7 @@ async function buildSnapshot(group: TvGroup, ownedSymbols: string[], options: Tv
   const page = Math.max(0, Math.min(options.page ?? 0, Math.max(0, Math.ceil(selected.length / pageSize) - 1)));
   const assets = selected.slice(page * pageSize, (page + 1) * pageSize);
   const quotes = (await resolveTvQuotes(assets, group)).map((quote, index) => ({ ...quote, listingKey: tvListingKey(assets[index]) }));
-  return { group, quotes, retryAt: tvSnapshotRetryAt(quotes, Date.now(), group), generatedAt: new Date().toISOString(), available: quotes.filter(hasTvPrice).length,
+  return { group, ...(options.scene === 'crypto' ? { scene: options.scene, summary: [] } : {}), quotes, retryAt: tvSnapshotRetryAt(quotes, Date.now(), group), generatedAt: new Date().toISOString(), available: quotes.filter(hasTvPrice).length,
     total: assets.length, directoryTotal: directory.length, selectionTotal: selected.length, page, pageSize, market: options.market };
 }
 

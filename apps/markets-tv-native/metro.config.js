@@ -5,6 +5,7 @@ const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const config = getDefaultConfig(projectRoot);
 // Share pure channel/calendar contracts, while retaining the isolated TV runtime.
 config.watchFolders = ['markets-tv', 'market'].map(dir => path.resolve(projectRoot, '../../src/lib', dir));
+config.watchFolders.push(path.resolve(projectRoot, '../../public/markets-tv/assets/atlas'));
 config.resolver.nodeModulesPaths = [path.resolve(projectRoot, 'node_modules')];
 // pnpm dependencies resolve their own transitive modules through sibling links.
 config.resolver.disableHierarchicalLookup = false;

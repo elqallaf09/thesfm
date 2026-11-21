@@ -62,10 +62,15 @@ test('CI resolves credentials after target isolation and before provisioning, ne
   assert.match(job, /SUPABASE_ACCESS_TOKEN: \$\{\{ secrets\.SUPABASE_ACCESS_TOKEN \}\}/);
   assert.match(job, /steps\.preview-credentials\.outcome != 'success'/);
 });
-test('unrelated local smoke validation still requires its own service-role key', () => {
+test('smoke validation requires its own service-role key and confines the hosted key to pushes', () => {
   const workflow = readFileSync(new URL('../../workflows/ci.yml', import.meta.url), 'utf8');
   const job = workflow.slice(workflow.indexOf('\n  smoke:'), workflow.indexOf('\n  lighthouse:'));
-  assert.match(job, /SUPABASE_SERVICE_ROLE_KEY: \$\{\{ secrets\.SUPABASE_SERVICE_ROLE_KEY \}\}/);
+  const bindings = job.split('\n').filter(line => line.includes('secrets.SUPABASE_SERVICE_ROLE_KEY'));
+  assert.equal(bindings.length, 3);
+  for (const line of bindings) {
+    assert.match(line, /SUPABASE_SERVICE_ROLE_KEY: \$\{\{ steps\.local-auth\.outputs\.SUPABASE_SERVICE_ROLE_KEY \|\| \(github\.event_name == 'push' && \(secrets\.SUPABASE_SERVICE_ROLE_KEY\)\) \|\| '' \}\}/);
+  }
+  assert.match(job, /id: local-auth\n\s+if: github\.event_name == 'pull_request'/);
   assert.match(job, /          SUPABASE_SERVICE_ROLE_KEY \\/);
   assert.ok(!job.includes('SUPABASE_ACCESS_TOKEN'));
 });

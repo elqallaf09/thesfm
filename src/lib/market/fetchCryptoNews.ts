@@ -75,18 +75,24 @@ function dateDaysAgo(days: number) {
   return new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
 }
 
-export async function fetchCryptoNews(languageInput?: string | null) {
+type CryptoNewsOptions = { headlinesLimit: number };
+
+export async function fetchCryptoNews(languageInput?: string | null, options?: CryptoNewsOptions) {
   const language = normalizeNewsLanguage(languageInput);
   const aggregated = await aggregateFinancialNews({
-    query: 'bitcoin ethereum cryptocurrency blockchain regulation exchange ETF markets',
+    // The broadcast feed already selects crypto assets and their symbols. A full-text
+    // search would discard genuine headlines that do not contain every search term.
+    ...(options ? {} : { query: 'bitcoin ethereum cryptocurrency blockchain regulation exchange ETF markets' }),
     symbols: [...SYMBOLS],
     marketCodes: ['crypto'],
     assetTypes: ['crypto'],
     from: dateDaysAgo(30),
     to: new Date().toISOString().slice(0, 10),
     language,
-    limit: 180,
-  }, { page: 1, pageSize: 60, sort: 'importance' });
+    limit: options?.headlinesLimit ?? 180,
+  }, { page: 1, pageSize: options?.headlinesLimit ?? 60, sort: options ? 'latest' : 'importance',
+    ...(options ? { storeBudgetMs: 1500, providerBudgetMs: 6000, skipPersistence: true } : {}),
+  });
 
   const baseItems: CryptoNewsItem[] = aggregated.stories.map(story => ({
     id: story.id,
@@ -118,7 +124,7 @@ export async function fetchCryptoNews(languageInput?: string | null) {
     conflictSummary: story.conflictSummary,
     whyItMatters: story.whyItMatters,
   }));
-  const items = await translateNewsItems(baseItems, language) as CryptoNewsItem[];
+  const items = options ? baseItems : await translateNewsItems(baseItems, language) as CryptoNewsItem[];
 
   return {
     success: true,

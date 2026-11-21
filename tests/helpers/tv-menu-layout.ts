@@ -1,8 +1,9 @@
 import { expect, type Page } from '@playwright/test';
+import { TV_EXTRA_NEWS_CHANNELS } from '../../src/lib/markets-tv/newsReceiver';
 
-const destinations = ['hall', 'allStocks', 'strips', 'world', 'kuwait', 'gulf', 'assets', 'crypto', 'forex', 'news', 'sessions', 'watchlist', 'investments', 'brief', 'map'];
+const destinations = ['hall', 'brief', 'map', 'sessions', 'allStocks', 'kuwait', 'gulf', 'world', 'assets', 'crypto', 'forex', 'strips', 'news', 'technology', ...TV_EXTRA_NEWS_CHANNELS, 'watchlist', 'investments'];
 export const TV_MENU_KEYS = [
-  'menu-close', ...destinations.map(key => `menu:${key}`),
+  'menu-close', 'sections', 'wallpapers', ...destinations.map(key => `menu:${key}`),
   'customize', 'settings', 'my-account', 'switch-account', 'pair', 'more',
 ];
 

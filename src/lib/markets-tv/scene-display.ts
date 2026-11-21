@@ -1,5 +1,6 @@
 import type { TvGroup, TvLanguage, TvQuote, TvScene } from './types';
 import { isTvExternalIndex } from './indexIdentity';
+import { tvGulfCashIndex } from './gulfCashIndices';
 
 export const TV_SCENE_ORDER: TvScene[] = ['overview', 'gulf', 'world', 'assets', 'crypto', 'watchlist'];
 const SCENE_GROUP: Record<TvScene, TvGroup> = {
@@ -7,7 +8,8 @@ const SCENE_GROUP: Record<TvScene, TvGroup> = {
 };
 
 /** One bounded snapshot supplies the summaries, main list and ticker together. */
-export function tvScenePath(scene: TvScene) {
+export function tvScenePath(scene: TvScene, cryptoPage = 0, cryptoPageSize = 6) {
+  if (scene === 'crypto') return `/api/tv/snapshot?group=crypto&scene=crypto&pageSize=${cryptoPageSize}&page=${cryptoPage}`;
   return `/api/tv/snapshot?group=${SCENE_GROUP[scene]}&scene=${scene}&pageSize=10`;
 }
 
@@ -85,7 +87,7 @@ export function tvSceneText(language: TvLanguage, key: TvSceneTextKey) {
 }
 
 export function tvSceneQuoteUnit(quote: TvQuote, language: TvLanguage) {
-  if (quote.symbol.startsWith('^') || isTvExternalIndex(quote.symbol)) return tvSceneText(language, 'points');
+  if (quote.symbol.startsWith('^') || isTvExternalIndex(quote.symbol) || tvGulfCashIndex(quote.symbol)) return tvSceneText(language, 'points');
   // Unit labels are restricted to the exact contracts whose units are known.
   if (quote.currency === 'USD' && ['GC=F', 'SI=F', 'XAUUSD', 'XAGUSD', 'COMEX:GC1!', 'COMEX:SI1!', 'NYMEX:PL1!', 'NYMEX:PA1!'].includes(quote.symbol)) return 'USD / oz';
   if (quote.currency === 'USD' && ['CL=F', 'BZ=F', 'NYMEX:CL1!', 'ICEEUR:BRN1!'].includes(quote.symbol)) return 'USD / bbl';

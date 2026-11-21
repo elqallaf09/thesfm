@@ -1,4 +1,5 @@
 import {
+  boubyanQuoteSymbol,
   boubyanSecurityKey,
   normalizeBoubyanExchange,
   type BoubyanReferenceProvenance,
@@ -250,22 +251,22 @@ export function createShariahNewsLookup(rows: readonly SecurityRow[]) {
   };
 }
 
-const ANALYSIS_SUFFIXES: Readonly<Record<string, string>> = {
-  BOURSA_KUWAIT: '.KW', TADAWUL: '.SR', DFM: '.DU', ADX: '.AD',
-  QSE: '.QA', BAHRAIN_BOURSE: '.BH', MUSCAT: '.OM',
-};
-
-/** The legacy analysis API reads a provider symbol, not a separate exchange. */
-export function securityAnalysisSymbol(item: SecurityIdentity): string | null {
-  const key = boubyanSecurityKey(item);
-  if (!key) return null;
-  const exchange = key.slice(0, key.indexOf(':'));
-  const symbol = key.slice(key.indexOf(':') + 1);
-  const suffix = ANALYSIS_SUFFIXES[exchange];
-  if (suffix) return `${symbol}${suffix}`;
-  if (['NASDAQ', 'NYSE', 'AMEX', 'NYSE_ARCA', 'OTC'].includes(exchange)) return symbol;
-  return null;
+export function compliantTickerQuotes(screening: ScreeningResponse | null, quotes: readonly ShariahQuote[]) {
+  if (!screening?.ok || screening.catalogStorage?.complete === false) return [];
+  const matches = new Set<string>();
+  const seen = new Set<string>();
+  for (const row of screening.items) {
+    const key = boubyanSecurityKey(row);
+    if (!key) continue;
+    if (seen.has(key)) matches.delete(key);
+    else if (row.assetType === 'stock' && row.shariahStatus === 'compliant') matches.add(key);
+    seen.add(key);
+  }
+  return quotes.filter(quote => quote.assetType === 'stock' && quote.shariahStatus === 'compliant'
+    && matches.has(boubyanSecurityKey(quote) ?? ''));
 }
+
+export { boubyanQuoteSymbol as securityAnalysisSymbol };
 
 export function securityResearchQuery(item: SecurityIdentity) {
   return boubyanSecurityKey(item) ?? [item.exchange, item.symbol].filter(Boolean).join(':');
@@ -273,7 +274,7 @@ export function securityResearchQuery(item: SecurityIdentity) {
 
 /** The legacy API may try alternative symbols; never render a different asset's result. */
 export function matchesSecurityAnalysisResult(item: SecurityIdentity, result: { providerSymbol?: string; symbol?: string }) {
-  const expected = securityAnalysisSymbol(item);
+  const expected = boubyanQuoteSymbol(item);
   const actual = (result.providerSymbol || result.symbol || '').trim().toUpperCase();
   return Boolean(expected && actual === expected);
 }

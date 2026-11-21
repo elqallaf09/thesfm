@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
@@ -14,6 +15,7 @@ import {
   Newspaper,
   Radar,
   RefreshCcw,
+  Rocket,
   Search,
   ShieldCheck,
   Sparkles,
@@ -23,10 +25,13 @@ import { StockTickerStrip, type StockTickerStripItem } from '@/components/market
 import { NewsPageShell } from '@/components/news/NewsPageShell';
 import { useLanguage } from '@/hooks/useLanguage';
 import { dedupeNewsItems, newsArticleKey, safeExternalNewsUrl } from '@/lib/news/clientNewsUtils';
+import { tvNewsPhotoUrl } from '@/lib/markets-tv/newsPhoto';
 import { filterSpecialNews } from '@/lib/news/specialNewsSearch';
 import type { NewsPageBackgroundCategory } from '@/lib/news/pageBackground';
+import { IPO_REGIONS, ipoReferenceDomains, isIpoTopic, type IpoTopicId } from '@/lib/market-news/ipoRegions';
 import styles from './SpecialMarketNewsPage.module.css';
 import { NewListingsPanel } from './NewListingsPanel';
+import { IPO_TOPIC_COPY, type Lang, type TopicCopy } from './ipoTopicCopy';
 
 export type SpecialNewsTopic =
   | 'federal-reserve'
@@ -37,9 +42,8 @@ export type SpecialNewsTopic =
   | 'earnings-news'
   | 'analyst-ratings-news'
   | 'mergers-acquisitions-news'
-  | 'unusual-moves-news';
-
-type Lang = 'ar' | 'en' | 'fr';
+  | 'unusual-moves-news'
+  | IpoTopicId;
 
 type SpecialNewsItem = {
   id: string;
@@ -54,6 +58,7 @@ type SpecialNewsItem = {
   publishedAt?: string | null;
   updatedAt?: string | null;
   url?: string | null;
+  imageUrl?: string | null;
   symbols?: string[];
   companyNames?: string[];
   sectors?: string[];
@@ -103,17 +108,6 @@ type SpecialNewsResponse = {
   } | null;
 };
 
-type TopicCopy = {
-  title: string;
-  subtitle: string;
-  badge: string;
-  method: string;
-  empty: string;
-  emptyHint: string;
-  search: string;
-  tickerLabel: string;
-};
-
 type CommonCopy = {
   refresh: string;
   refreshing: string;
@@ -129,6 +123,8 @@ type CommonCopy = {
   results: string;
   priceRule: string;
   unavailable: string;
+  references: string;
+  officialFeeds: string;
 };
 
 const TOPIC_COPY: Record<SpecialNewsTopic, Record<Lang, TopicCopy>> = {
@@ -420,6 +416,7 @@ const TOPIC_COPY: Record<SpecialNewsTopic, Record<Lang, TopicCopy>> = {
       tickerLabel: 'Plus forts mouvements liés aux actualités',
     },
   },
+  ...IPO_TOPIC_COPY,
 };
 
 const COMMON_COPY: Record<Lang, CommonCopy> = {
@@ -438,6 +435,8 @@ const COMMON_COPY: Record<Lang, CommonCopy> = {
     results: 'نتيجة',
     priceRule: 'يظهر فقط السهم الذي تم التحقق من أن سعره الحالي المتاح أقل من 1$.',
     unavailable: 'غير متاح',
+    references: 'المراجع المستخدمة في البحث',
+    officialFeeds: 'مصادر البورصات الرسمية',
   },
   en: {
     refresh: 'Refresh',
@@ -454,6 +453,8 @@ const COMMON_COPY: Record<Lang, CommonCopy> = {
     results: 'results',
     priceRule: 'Only stocks with an available verified current quote below $1 are shown.',
     unavailable: 'Unavailable',
+    references: 'References searched',
+    officialFeeds: 'Official exchange feeds',
   },
   fr: {
     refresh: 'Actualiser',
@@ -470,6 +471,8 @@ const COMMON_COPY: Record<Lang, CommonCopy> = {
     results: 'résultats',
     priceRule: 'Seules les actions dont le cours disponible et vérifié est inférieur à 1 $ sont affichées.',
     unavailable: 'Indisponible',
+    references: 'Références consultées',
+    officialFeeds: 'Flux officiels des bourses',
   },
 };
 
@@ -483,6 +486,12 @@ const BACKGROUNDS: Record<SpecialNewsTopic, NewsPageBackgroundCategory> = {
   'analyst-ratings-news': 'tech',
   'mergers-acquisitions-news': 'growth',
   'unusual-moves-news': 'cyclical',
+  'ipo-us-news': 'growth',
+  'ipo-asia-news': 'growth',
+  'ipo-europe-news': 'growth',
+  'ipo-uk-news': 'growth',
+  'ipo-gulf-news': 'growth',
+  'ipo-arab-news': 'growth',
 };
 
 const ICONS = {
@@ -495,6 +504,12 @@ const ICONS = {
   'analyst-ratings-news': Radar,
   'mergers-acquisitions-news': BriefcaseBusiness,
   'unusual-moves-news': TrendingUp,
+  'ipo-us-news': Rocket,
+  'ipo-asia-news': Rocket,
+  'ipo-europe-news': Rocket,
+  'ipo-uk-news': Rocket,
+  'ipo-gulf-news': Rocket,
+  'ipo-arab-news': Rocket,
 } as const;
 
 function normalizeLang(value: string): Lang {
@@ -526,12 +541,23 @@ function formatChange(value: number | null | undefined) {
   return `${sign}${value.toFixed(2)}%`;
 }
 
+function IpoArticleImage({ url }: { url?: string | null }) {
+  const photo = tvNewsPhotoUrl(url);
+  const [failed, setFailed] = useState(false);
+  return <Image className={styles.articleImage} src={photo && !failed ? photo : '/markets-tv/sfm-news-fallback.webp'}
+    alt="" width={640} height={268} unoptimized referrerPolicy="no-referrer"
+    onError={photo && !failed ? () => setFailed(true) : undefined} />;
+}
+
 export function SpecialMarketNewsPage({ topic }: { topic: SpecialNewsTopic }) {
   const { lang: rawLang, dir } = useLanguage();
   const lang = normalizeLang(rawLang);
   const copy = TOPIC_COPY[topic][lang];
   const common = COMMON_COPY[lang];
   const TopicIcon = ICONS[topic];
+  const ipoTopic = isIpoTopic(topic);
+  const references = useMemo(() => (isIpoTopic(topic) ? ipoReferenceDomains(topic) : []), [topic]);
+  const hasOfficialFeeds = isIpoTopic(topic) && IPO_REGIONS[topic].registryProviderPrefixes.length > 0;
 
   const [items, setItems] = useState<SpecialNewsItem[]>([]);
   const [tickerItems, setTickerItems] = useState<ApiTickerItem[]>([]);
@@ -583,7 +609,7 @@ export function SpecialMarketNewsPage({ topic }: { topic: SpecialNewsTopic }) {
       startTransition(() => setItems(nextItems));
       setPartialFailure(Boolean(payload.partialFailure));
       setLastUpdated(payload.updatedAt ?? payload.lastSuccessfulUpdate ?? null);
-      if (!fixedTicker && topic !== 'new-stocks') {
+      if (!fixedTicker && topic !== 'new-stocks' && !isIpoTopic(topic)) {
         if (payload.tickerItems?.length) setTickerItems(payload.tickerItems);
         const symbols = [...new Set(nextItems.flatMap(item => item.symbols ?? []).map(symbol => symbol.toUpperCase()))]
           .filter(symbol => /^[A-Z][A-Z0-9.-]{0,14}$/.test(symbol)).slice(0, 12);
@@ -666,7 +692,15 @@ export function SpecialMarketNewsPage({ topic }: { topic: SpecialNewsTopic }) {
           </div>
         </section>
 
-        {topic !== 'new-stocks' ? <section className={styles.tickerSection} aria-label={copy.tickerLabel}>
+        {ipoTopic ? (
+          <section className={styles.references} aria-label={common.references}>
+            <strong>{common.references}</strong>
+            <ul>
+              {hasOfficialFeeds ? <li className={styles.officialReference}><ShieldCheck size={13} aria-hidden="true" /> {common.officialFeeds}</li> : null}
+              {references.map(domain => <li key={domain} dir="ltr">{domain}</li>)}
+            </ul>
+          </section>
+        ) : topic !== 'new-stocks' ? <section className={styles.tickerSection} aria-label={copy.tickerLabel}>
           <StockTickerStrip
             ariaLabel={copy.tickerLabel}
             items={tickerStripItems}
@@ -741,16 +775,17 @@ export function SpecialMarketNewsPage({ topic }: { topic: SpecialNewsTopic }) {
 
               return (
                 <article className={styles.card} key={newsArticleKey(item)}>
+                  {ipoTopic && <IpoArticleImage key={item.imageUrl} url={item.imageUrl} />}
                   <div className={styles.cardTopline}>
                     <span className={styles.source}><Building2 size={14} /> {source}</span>
-                    <span className={styles.date}><Clock3 size={14} /> {formattedDate(item.publishedAt, lang)}</span>
+                    <span className={styles.date}><Clock3 size={14} /> <time dateTime={item.publishedAt ?? undefined}>{formattedDate(item.publishedAt, lang)}</time></span>
                   </div>
 
                   <div className={styles.tags}>
                     {item.isOfficial ? <span><ShieldCheck size={13} /> {common.official}</span> : null}
                     {item.priceVerified ? <span><CircleDollarSign size={13} /> {common.verified}</span> : null}
-                    {topic !== 'new-stocks' && item.ticker ? <span className={styles.ticker}>{item.ticker}</span> : null}
-                    {topic !== 'new-stocks' && !item.ticker ? symbols.map(symbol => <span className={styles.ticker} key={symbol}>{symbol}</span>) : null}
+                    {topic !== 'new-stocks' && !ipoTopic && item.ticker ? <span className={styles.ticker}>{item.ticker}</span> : null}
+                    {topic !== 'new-stocks' && !ipoTopic && !item.ticker ? symbols.map(symbol => <span className={styles.ticker} key={symbol}>{symbol}</span>) : null}
                   </div>
 
                   {price ? (

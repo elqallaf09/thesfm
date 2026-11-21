@@ -65,3 +65,11 @@ it('keeps the primary failure when external ^FTSE evidence has the wrong unit', 
   const limited: TvQuote = { ...original, symbol: '^FTSE', country: 'GB', issue: 'rate_limited' };
   expect(await withTvIndexFallback('^FTSE', Promise.resolve(limited))).toBe(limited);
 });
+it('never shares a miss: the next request asks the source again', async () => {
+  const stoxx = { ...external, providerSymbol: '^STOXX50E',
+    quoteSnapshot: { ...external.quoteSnapshot, symbol: '^STOXX50E', price: 5941.95, previousClose: 6113.86, name: 'EURO STOXX 50 I', exchange: 'Zurich' } };
+  fetchHistory.mockResolvedValueOnce({ success: false }).mockResolvedValueOnce(stoxx);
+  const { tvIndexAlternative } = await import('@/lib/server/markets-tv/indexFallback');
+  expect(await tvIndexAlternative('^STOXX50E')).toBeNull();
+  expect(await tvIndexAlternative('^STOXX50E')).toMatchObject({ symbol: '^STOXX50E', price: 5941.95, source: 'Yahoo Finance', country: 'EU' });
+});

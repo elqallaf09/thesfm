@@ -7,7 +7,12 @@
 /* Size filters from their labels. Equal shrinking columns let Arabic and
    French names paint over adjacent buttons even when the buttons fit. */
 .tv-screen .tv-picker.tv-market-picker-tv .tv-market-region-options button{flex:0 0 auto;max-width:100%;white-space:normal;overflow-wrap:anywhere;padding-inline:.8em}
-.tv-screen .tv-picker.tv-market-picker-tv .tv-market-row[aria-pressed=true]{border-color:var(--tv-accent);box-shadow:var(--tv-active-shadow)}
+.tv-market-cell{display:flex;align-items:stretch;min-width:0}
+.tv-market-cell .tv-market-row{flex:1;min-width:0}
+.tv-screen .tv-picker.tv-market-picker-tv .tv-market-cell[data-active=true] .tv-market-row{border-color:var(--tv-accent);box-shadow:var(--tv-active-shadow)}
+.tv-screen .tv-picker.tv-market-picker-tv .tv-market-cell .tv-market-options{flex:none;min-height:0;padding:0 .2em}
+.tv-market-cell:not([data-active=true]) .tv-market-options{color:var(--tv-muted)}
+.tv-market-options svg{width:1em;height:1em}
 .tv-screen .tv-picker.tv-market-picker-tv .tv-market-row:focus{outline-offset:-3px}
 @media(min-width:761px){
   .tv-screen .tv-picker.tv-market-picker-tv .tv-picker-scroll{display:flex;flex-direction:column;overflow:visible;padding:.3em;gap:.45em}

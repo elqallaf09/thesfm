@@ -11,7 +11,7 @@ import { isSupportedWorldStockRegion } from '@/lib/world-stocks/regions';
 import { tvInstrumentAssets } from './instruments';
 import { tvStockAssets } from './stockDirectory';
 import { localizeTvAsset } from './names';
-import { tvConfiguredMarketAssets } from './sceneCatalog';
+import { tvBriefAssets, tvConfiguredMarketAssets } from './sceneCatalog';
 import type { TvDirectoryCoverage } from '@/lib/markets-tv/selections';
 import { TV_WORLD_SESSIONS } from '@/lib/markets-tv/worldSessions';
 export type TvAsset = { symbol: string; displaySymbol?: string; name: string; nameAr?: string; region?: string; exchange?: string; currency?: string | null; country?: string | null; mic?: string; providerSymbol?: string; baseCurrency?: string; assetType?: 'stock' | 'index' | 'commodity' | 'crypto' | 'forex' };
@@ -62,7 +62,7 @@ function configuredDirectory(market: string, pending = false): TvDirectory {
 export async function tvDirectory(group: TvGroup, market?: string): Promise<TvDirectory> {
   if (group === 'crypto' || group === 'forex') return { assets: await tvInstrumentAssets(group), coverage: 'directory', asOf: null };
   if (group === 'commodities') return { assets: commodityAssets(), coverage: 'selected', asOf: null };
-  if (group === 'global') return { assets: tvAssetsAll(group), coverage: 'selected', asOf: null };
+  if (group === 'global') return { assets: market === 'brief' ? tvBriefAssets() : tvAssetsAll(group), coverage: 'selected', asOf: null };
   // Europe is an aggregate of verified exchange listings, never an alias for
   // the three names used by the compact viewing scene.
   if (market === 'europe' || group === 'europe' && !market) {

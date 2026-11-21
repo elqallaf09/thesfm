@@ -10,7 +10,7 @@ test('bundled gold, silver and company logos render offline at tablet sizes',asy
  const quotes=['TSLA','AAPL','MSFT'].map(symbol=>({...base,symbol,name:symbol,nameAr:symbol,exchange:'NASDAQ'}));
  await page.route('https://**/*',r=>{const u=r.request().url();return u.includes('/api/tv/snapshot?')?r.fulfill({json:{group:'commodities',scene:'assets',summary,quotes,total:3,available:3,generatedAt:new Date().toISOString()}}):u.includes('/api/tv/news?')?r.fulfill({json:{stories:[]}}):r.abort();});
  await page.goto(pathToFileURL(resolve('.tv-build/web/index.html')).href);await closeTvMenu(page);
- await expect(page.locator('.tv-scene-summaries img')).toHaveCount(2);
+ await expect(page.locator('.tv-scene-summaries img')).toHaveCount(summary.length);
  await expect(page.locator('.tv-scene-row img')).toHaveCount(3);
  await expect.poll(()=>page.locator('.tv-scene-summaries img,.tv-scene-row img').evaluateAll(nodes=>nodes.every(n=>(n as HTMLImageElement).complete&&(n as HTMLImageElement).naturalWidth>0))).toBe(true);
  for(const [width,height] of [[1536,1009],[960,540],[1920,1080]]){

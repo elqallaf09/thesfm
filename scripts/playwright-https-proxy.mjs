@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { assertLocalRequest } from './economic-intelligence/local-rls-guard.mjs';
 
 const require = createRequire(import.meta.url);
 
@@ -129,6 +130,14 @@ async function main() {
   const listenHost = '127.0.0.1';
   const listenPort = 3443;
   const [cert, key] = await Promise.all([readFile(certPath), readFile(keyPath)]);
+  if (process.argv[2] === '--supabase-local') {
+    const url = process.env.PLAYWRIGHT_SUPABASE_UPSTREAM_URL;
+    const upstream = assertLocalRequest(url, url);
+    const proxy = await startHttpsLoopbackProxy({ cert, key, upstreamPort: Number(upstream.port), listenPort: 0 });
+    const address = proxy.address();
+    console.log(`https://${address.address}:${address.port}`);
+    return;
+  }
   const nextCli = require.resolve('next/dist/bin/next');
   const proxy = await startHttpsLoopbackProxy({
     cert,

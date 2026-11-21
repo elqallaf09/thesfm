@@ -184,10 +184,12 @@ describe('TV canonical market snapshots', () => {
     expect(cryptoTvQuotes).not.toHaveBeenCalled();
     expect(forexTvQuote).toHaveBeenCalledTimes(3);
     expect(snapshot.selectionTotal).toBe(7);
-    const coins = await loadTvSnapshot('crypto', [], { scene: 'crypto' });
-    expect(coins.selectionTotal).toBe(3);
+    const symbols = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'DOGE', 'LINK', 'LTC'];
+    directory.mockResolvedValue(symbols.map(base => ({ symbol: base + '/USDT', name: base, region: 'BINANCE', currency: 'USDT' })));
+    const coins = await loadTvSnapshot('crypto', [], { scene: 'crypto', page: 1, pageSize: 6 });
+    expect(coins).toMatchObject({ scene: 'crypto', summary: [], selectionTotal: 8, directoryTotal: 8, page: 1, total: 2 });
     expect(cryptoTvQuotes).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(cryptoTvQuotes).mock.calls[0][0].map(asset => asset.symbol)).toEqual(['BTC/USDT', 'ETH/USDT', 'SOL/USDT']);
+    expect(vi.mocked(cryptoTvQuotes).mock.calls[0][0].map(asset => asset.symbol)).toEqual(['LINK/USDT', 'LTC/USDT']);
     expect(forexTvQuote).toHaveBeenCalledTimes(3);
   });
 });

@@ -31,7 +31,7 @@ export function TvQuoteTable({ items, quotes, markets = [], language, now, loadi
       return <div className="tv-hall-row" role="row" key={key} data-trend={movement.trend}>
         <div role="cell" className="tv-hall-identity">
           <button type="button" disabled={!quote} onClick={() => quote && select(quote)} data-tv-focus-key={`hall:${key}`}>
-            <TvAssetIcon quote={quote ?? { symbol: item.symbol, name: item.name, exchange: item.region ?? null }}/>
+            <TvAssetIcon quote={{ symbol: item.symbol, displaySymbol: item.displaySymbol, name: item.name, exchange: item.region || quote?.exchange || null }}/>
             <span className="tv-hall-company-copy">
               <strong dir="auto" title={companyName}>{companyName}</strong>
               <span className="tv-hall-listing"><bdi>{item.displaySymbol || item.symbol}</bdi>{marketName && <small>{marketName}</small>}</span>
