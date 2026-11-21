@@ -11,6 +11,7 @@ describe('SFM TV receiver channels', () => {
     expect(nextTvReceiverChannel('allStocks', -1)).toBe('news');
     expect(nextTvReceiverChannel('markets', 1)).toBe('allStocks');
     expect(nextTvReceiverChannel('markets', -1)).toBe('news');
+    expect(nextTvReceiverChannel('news', -1)).toBe('forex');
     for (const channel of TV_RECEIVER_CHANNELS) {
       const settings = normalizeTvSettings({ broadcastChannel: channel });
       const [saved] = normalizeTvChannels([{ id: 'custom', name: 'Custom', view: channel, settings, selections: {} }]);
@@ -29,3 +30,4 @@ describe('SFM TV receiver channels', () => {
     expect(tvCorsHeaders('https://appassets.androidplatform.net')).toMatchObject({ 'Access-Control-Expose-Headers': 'Retry-After' });
   });
 });
+

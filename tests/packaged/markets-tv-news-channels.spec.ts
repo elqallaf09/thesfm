@@ -15,7 +15,14 @@ for (const language of ['ar','en','fr'] as const) test(`all news channels: ${lan
   await page.route('**/api/**',route=>{
     const url=new URL(route.request().url());requested.push(url.pathname+url.search);
     const topic=url.searchParams.get('topic'), category=url.pathname.match(/\/([a-z]+)-stocks\/news/)?.[1];
-    const items=Array.from({length:24},(_,index)=>({id:`${url.pathname}-${topic}-${index}`,title:`${topic||category||url.pathname} ${index} · أخبار الشركات المدرجة ونتائج أعمالها المالية وتطورات الأسواق من المصدر الأصلي`,source:'QA source',publishedAt:'2026-11-07T12:00:00Z',url:`https://example.com/${topic||category||'region'}/${index}`,shariahStatus:index%2?'needs_review':'unclassified'}));
+    if (url.pathname === '/api/sharia-stocks/ticker') {
+      const quote = { name:'Issuer', assetType:'stock', available:true, price:10, currency:'USD', source:'Fixture' };
+      return route.fulfill({json:{items:[
+        {...quote,symbol:'PASS',canonicalSecurityId:'NYSE:PASS',shariahStatus:'compliant'},
+        {...quote,symbol:'REVIEW',canonicalSecurityId:'NYSE:REVIEW',shariahStatus:'needs_review'},
+      ]}});
+    }
+    const items=Array.from({length:24},(_,index)=>({id:`${url.pathname}-${topic}-${index}`,title:`${topic||category||url.pathname} ${index} · أخبار الشركات المدرجة ونتائج أعمالها المالية وتطورات الأسواق من المصدر الأصلي`,source:'QA source',publishedAt:'2026-11-07T12:00:00Z',url:`https://example.com/${topic||category||'region'}/${index}`,shariahStatus:category === 'sharia' ? 'compliant' : undefined}));
     return route.fulfill({json:{items,topic,category,success:true,lastSuccessfulUpdate:'2026-11-07T13:00:00Z'}});
   });
   await openAndroidTvPackage(page);
@@ -46,11 +53,16 @@ for (const language of ['ar','en','fr'] as const) test(`all news channels: ${lan
       await expect(page.locator('.tv-headline-items button').last()).toBeInViewport({ratio:1});
     }
     if(channel==='shariaNews') {
-      await expect(page.locator('.tv-news-screening').first()).toHaveAttribute('title', receiverText(language, 'unclassified'));
-      await expect(page.locator('.tv-news-screening').first()).toHaveText({ ar: 'غير مصنّف', en: 'Unclassified', fr: 'Non classé' }[language]);
+      const strip = page.locator('.tv-quote-marquee');
+      await expect(strip).toContainText('PASS');
+      await expect(strip).not.toContainText('REVIEW');
+      expect((await strip.boundingBox())!.height).toBeLessThanOrEqual(46);
+      await expect(page.locator('.tv-news-screening').first()).toHaveAttribute('title', receiverText(language, 'compliant'));
+      await expect(page.locator('.tv-news-screening').first()).toHaveText({ ar: 'متوافق', en: 'Compliant', fr: 'Conforme' }[language]);
     }
   }
-  expect(requested.some(path=>path.includes('snapshot')||path.includes('portfolio'))).toBe(false);
+  expect(requested.some(path=>path.includes('portfolio') || path.includes('group=watchlist'))).toBe(false);
+  expect(requested).toContain('/api/tv/snapshot?group=commodities&pageSize=2');
   // Native channel keys traverse the additional channels and wrap to the originals.
   await page.evaluate(()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:'ChannelDown',bubbles:true})));
   await expect(page.locator('[data-tv-root]')).toHaveAttribute('data-tv-view','cyclicalNews');
@@ -73,3 +85,4 @@ for (const language of ['ar','en','fr'] as const) test(`all news channels: ${lan
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(cards.last()).toBeFocused();
 });
+

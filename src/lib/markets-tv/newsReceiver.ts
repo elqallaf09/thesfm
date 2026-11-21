@@ -57,6 +57,7 @@ export function isTvExtraNewsChannel(value: unknown): value is TvExtraNewsChanne
 export function receiverNewsPath(channel: TvReceiverNewsChannel, language: TvLanguage) {
   if (channel === 'news') return `/api/tv/news?language=${language}`;
   if (!isTvExtraNewsChannel(channel)) return `/api/tv/news?language=${language}&channel=${channel}`;
+  if (channel === 'shariaNews') return `/api/sharia-stocks/news?lang=${language}&limit=24&view=headlines&scope=compliant`;
   const path = TV_NEWS_FEEDS[channel];
   const headlinesOnly = /^\/api\/[a-z]+-stocks\/news$/.test(path) || path === '/api/europe-news';
   return `${path}${path.includes('?') ? '&' : '?'}lang=${language}&limit=24${headlinesOnly ? '&view=headlines' : ''}`;
@@ -80,6 +81,7 @@ export function receiverNewsPayload(value: unknown, channel: TvReceiverNewsChann
     const source = typeof item.source === 'string' ? item.source : item.sourceName;
     const publishedAt = date(item.publishedAt);
     if (!url || typeof title !== 'string' || !title.trim() || typeof source !== 'string' || !source.trim() || !publishedAt || seen.has(url)) return [];
+    if (channel === 'shariaNews' && item.shariahStatus !== 'compliant') return [];
     seen.add(url);
     const imageUrl = [item.imageUrl, item.image, item.thumbnail]
       .map(tvNewsPhotoUrl).find(Boolean);
@@ -91,3 +93,4 @@ export function receiverNewsPayload(value: unknown, channel: TvReceiverNewsChann
     partial: body.partialFailure === true, stored: body.storedFallbackUsed === true,
     updatedAt: date(body.lastSuccessfulUpdate) ?? date(body.generatedAt) };
 }
+

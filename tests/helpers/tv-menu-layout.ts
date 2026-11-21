@@ -1,6 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 
-const destinations = ['hall', 'allStocks', 'strips', 'world', 'kuwait', 'gulf', 'assets', 'crypto', 'news', 'sessions', 'watchlist', 'investments', 'brief', 'map'];
+const destinations = ['hall', 'allStocks', 'strips', 'world', 'kuwait', 'gulf', 'assets', 'crypto', 'forex', 'news', 'sessions', 'watchlist', 'investments', 'brief', 'map'];
 export const TV_MENU_KEYS = [
   'menu-close', ...destinations.map(key => `menu:${key}`),
   'customize', 'settings', 'my-account', 'switch-account', 'pair', 'more',
@@ -72,3 +72,4 @@ export async function focusTvMenuAction(page: Page, key: string) {
   }
   await expectTvMenuActionFits(page, key);
 }
+

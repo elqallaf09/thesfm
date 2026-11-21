@@ -9,6 +9,7 @@ export type TvPortfolioPosition = {
   value: TvPortfolioMoney | null; baseValue: number | null; baseCost: number | null;
   holdingCurrency?: string | null; holdingValue?: TvPortfolioMoney | null; cost?: TvPortfolioMoney | null;
   platform: string | null; source: string | null; valuedAt: string | null; freshness: 'recorded' | 'stale' | 'missing';
+  marketQuote?: TvQuote;
   valuationKind?: 'market' | 'recorded' | 'manual'; quoteStatus?: TvQuote['status'];
   valuationIssue?: 'identity_unverified' | 'quantity_unavailable' | 'units_unverified' | 'quote_unavailable' | 'fx_unavailable';
   recordedValue?: TvPortfolioMoney | null; recordedBaseValue?: number | null;

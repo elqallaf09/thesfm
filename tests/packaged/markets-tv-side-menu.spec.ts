@@ -361,9 +361,10 @@ test('side menu owns destinations and settings while market hours keep the full 
   await chooseTvDestination(page, 'sessions');
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('sfm-markets-tv-settings-v1') || '{}').sessionIds?.length)).toBe(81);
   await expect(page.locator('.tv-world-pages > bdi')).toHaveText('1 / 5');
+  await expect(page.locator('.tv-quote-marquee')).toBeVisible();
   const sessionTools = await openTvHeaderActions(page);
   await expect(sessionTools.locator('[data-tv-focus-key=scene-playback]')).toHaveText('تشغيل تقليب الصفحات');
-  await expect(sessionTools.locator('[data-tv-focus-key=ticker-playback]')).toHaveCount(0);
+  await expect(sessionTools.locator('[data-tv-focus-key=ticker-playback]')).toBeVisible();
 });
 
 for (const theme of ['light', 'dark'] as const) {
@@ -446,3 +447,4 @@ test('screen tools hide ineffective controls on static pages and respect ticker 
   await expect(tools.locator('[data-tv-focus-key=ticker-playback]')).toBeVisible();
   await expect(tools.locator('[data-tv-focus-key=scene-playback], [data-tv-focus-key=scene-previous], [data-tv-focus-key=scene-next]')).toHaveCount(0);
 });
+
