@@ -161,9 +161,11 @@
 }
 
 .tv-stock-ticker-slot { display: contents; }
-@media (orientation: portrait) and (min-width: 761px) {
-  /* Reserve the ticker while quotes refresh, so the page size stays stable. */
+@media (min-width: 761px) {
+  /* The ticker briefly unmounts between quote pages. Keep the grid stable. */
   .tv-screen .tv-stock-ticker-slot { display: block; flex: 0 0 clamp(30px, 3.8vh, 46px); min-width: 0; }
+}
+@media (orientation: portrait) and (min-width: 761px) {
   .tv-screen .tv-all-stocks .tv-hall-rows { max-height: none; }
 }
 @media (orientation: portrait) and (max-width: 760px) {
