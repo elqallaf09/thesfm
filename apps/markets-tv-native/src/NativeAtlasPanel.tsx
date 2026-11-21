@@ -90,7 +90,7 @@ function TourButton({ title, onPress }: { title: string; onPress: () => void }) 
 }
 
 const s = StyleSheet.create({
-  artwork: { width: '100%', height: '100%' }, caption: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: 'rgba(0,0,0,.68)', padding: 18 },
+  caption: { position: 'absolute', bottom: 0, width: '100%', backgroundColor: 'rgba(0,0,0,.68)', padding: 18 },
   country: { fontFamily: 'SfmArabic', fontSize: 31, color: 'white' }, landmark: { fontFamily: 'SfmArabic', fontSize: 23, color: 'white' },
   minorDot: { transform: [{ scale: .5 }] }, tour: { gap: 12, alignItems: 'center' }, tourButton: { borderWidth: 2, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 4 },
   root: { flex: 1, gap: 14 }, heading: { alignItems: 'center', justifyContent: 'space-between', gap: 24 },
