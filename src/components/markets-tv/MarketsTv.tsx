@@ -26,12 +26,15 @@ import { TV_RECEIVER_CHANNELS, isTvReceiverChannel, nextTvReceiverChannel, recei
 import { receiverNewsPath, receiverNewsPayload, TV_NEWS_TOPICS } from '@/lib/markets-tv/newsReceiver';
 import { TV_SESSION_IDS } from '@/lib/markets-tv/sessionSelection';
 import { TvDataNotice } from './TvDataNotice';
-import { TvWallpaperPicker } from './TvWallpaperPicker';
+const TvWallpaperPicker = lazy(() => import('./TvWallpaperPicker').then(module => ({ default: module.TvWallpaperPicker })));
 import { wallpaperPath } from '@/lib/markets-tv/wallpapers';
 import { TvHeader } from './TvHeader';
 const TvAccountPicker = lazy(() => import('./TvAccountPicker').then(module => ({ default: module.TvAccountPicker })));
 import { readTvProfiles, writeTvProfiles, validTvProfileToken, type TvLocalProfile } from '@/lib/markets-tv/localProfiles';
-import { TvSideMenu, tvMenuText, type TvSideDestination } from './TvSideMenu';
+import './side-menu.css';
+import { tvMenuText } from './tvMenuCopy';
+import type { TvSideDestination } from './TvSideMenu';
+const TvSideMenu = lazy(() => import('./TvSideMenu').then(module => ({ default: module.TvSideMenu })));
 const TvToolsPanel = lazy(() => import('./TvToolsPanel').then(module => ({ default: module.TvToolsPanel })));
 const TvSignOutPanel = lazy(() => import('./TvToolsPanel').then(module => ({ default: module.TvSignOutPanel })));
 const TvMyAccountPanel = lazy(() => import('./TvMyAccountPanel').then(module => ({ default: module.TvMyAccountPanel })));
@@ -373,9 +376,9 @@ export function MarketsTv({ initialStripsOnly = false, initialAllStocks = false 
     }} onGuest={() => { clearAccountContext(); setAccountChoice(false); setMenuOpen(true); }}
       onAdd={() => { clearAccountContext(); setAccountChoice(false); openPair(); }}/></Suspense>}
     <TvHeader language={settings.language} ready={ready} hidden={controls.hidden} menuOpen={menuOpen} openMenu={() => { controls.wake(); setMenuOpen(true); }}/>
-    <TvSideMenu language={settings.language} open={menuOpen} active={activeMenu} paired={Boolean(token)} deviceName={device.data?.device.name}
+    {menuOpen && <Suspense fallback={null}><TvSideMenu language={settings.language} open={menuOpen} active={activeMenu} paired={Boolean(token)} deviceName={device.data?.device.name}
       onClose={() => setMenuOpen(false)} onNavigate={chooseMenu} channels={channels} onSavedChannel={applySavedChannel} onCustomize={() => openMenuDialog('markets')}
-      onWallpapers={() => openMenuDialog('wallpapers')} onSettings={() => openMenuDialog('settings')} onMyAccount={() => openMenuDialog('account')} onSwitchAccount={() => { clearAccountContext(); setAccountChoice(true); setMenuOpen(false); }} onAccount={() => openMenuDialog(token ? 'device' : 'pair')} onTools={() => openMenuDialog('tools')}/>
+      onWallpapers={() => openMenuDialog('wallpapers')} onSettings={() => openMenuDialog('settings')} onMyAccount={() => openMenuDialog('account')} onSwitchAccount={() => { clearAccountContext(); setAccountChoice(true); setMenuOpen(false); }} onAccount={() => openMenuDialog(token ? 'device' : 'pair')} onTools={() => openMenuDialog('tools')}/></Suspense>}
     {stripsOnly ? <>
 
       {!online && <div className="tv-notice" role="status">{t('offline')}</div>}

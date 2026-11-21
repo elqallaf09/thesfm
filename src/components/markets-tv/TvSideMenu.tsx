@@ -13,7 +13,7 @@ import { receiverText } from '@/lib/markets-tv/receiver';
 import type { TvChannel } from '@/lib/markets-tv/channels';
 import { tvSceneText } from '@/lib/markets-tv/scene-display';
 import type { TvLanguage } from '@/lib/markets-tv/types';
-import './side-menu.css';
+import { tvMenuCopy } from './tvMenuCopy';
 
 export type TvSideDestination = 'hall' | 'allStocks' | 'strips' | 'world' | 'gulf' | 'assets' | 'crypto' | 'forex' | 'kuwait' | 'news' | 'sessions' | 'watchlist' | 'investments' | 'brief' | 'map' | 'technology' | TvExtraNewsChannel;
 
@@ -36,21 +36,13 @@ type Props = {
   onTools: () => void;
 };
 
-const COPY = {
-  ar: { sections: 'الأقسام', wallpapers: 'خلفية الشاشة', overview: 'نظرة عامة', markets: 'الأسواق', broadcasts: 'الأخبار والقنوات', library: 'مكتبتي', display: 'إعدادات العرض', accountHeading: 'الحساب', back: 'رجوع', menu: 'القائمة', world: 'أسواق العالم', strips: 'أشرطة الأسعار', news: 'الأخبار', signIn: 'تسجيل الدخول', signOut: 'تسجيل الخروج', guest: 'المشاهدة العامة', account: 'الحساب مرتبط', myAccount: 'حسابي', tools: 'أدوات الشاشة' },
-  en: { sections: 'Sections', wallpapers: 'Wallpaper', overview: 'Overview', markets: 'Markets', broadcasts: 'News and channels', library: 'My library', display: 'Display settings', accountHeading: 'Account', back: 'Back', menu: 'Menu', world: 'World markets', strips: 'Price strips', news: 'News', signIn: 'Sign in', signOut: 'Sign out', guest: 'Public viewing', account: 'Account linked', myAccount: 'My account', tools: 'Screen tools' },
-  fr: { sections: 'Rubriques', wallpapers: 'Fond d’écran', overview: 'Vue d’ensemble', markets: 'Marchés', broadcasts: 'Actualités et chaînes', library: 'Ma bibliothèque', display: 'Réglages d’affichage', accountHeading: 'Compte', back: 'Retour', menu: 'Menu', world: 'Marchés mondiaux', strips: 'Bandes de cours', news: 'Actualités', signIn: 'Se connecter', signOut: 'Se déconnecter', guest: 'Affichage public', account: 'Compte lié', myAccount: 'Mon compte', tools: 'Outils de l’écran' },
-} satisfies Record<TvLanguage, Record<string, string>>;
-
-export const tvMenuText = (language: TvLanguage, key: keyof typeof COPY.ar) => COPY[language][key];
-
 type MenuItem = { key: string; label: string; icon: LucideIcon; destination?: TvSideDestination; action: () => void };
 
 export function TvSideMenu({ language, open, active, paired, deviceName, onClose, onNavigate, channels, onSavedChannel, onCustomize, onWallpapers, onSettings, onMyAccount, onAccount, onSwitchAccount, onTools }: Props) {
   const panel = useRef<HTMLElement>(null);
   const [showSections, setShowSections] = useState(false);
   const jumpTarget = useRef<string | null>(null);
-  const copy = COPY[language];
+  const copy = tvMenuCopy[language];
   const t = (key: Parameters<typeof tvText>[1]) => tvText(language, key);
   const route = (destination: TvSideDestination, label: string, icon: LucideIcon): MenuItem => ({
     key: `menu:${destination}`, label, icon, destination, action: () => onNavigate(destination),

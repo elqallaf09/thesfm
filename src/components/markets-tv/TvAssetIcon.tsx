@@ -1,7 +1,7 @@
 'use client';
 /* eslint-disable @next/next/no-img-element -- Also rendered by packaged TV WebViews. */
 import { useMemo, useState } from 'react';
-import { Coins, Flame, Droplets } from 'lucide-react';
+import { Coins, Flame, Droplets, Layers3 } from 'lucide-react';
 import { getAssetVisualMeta, resolveAssetIdentity } from '@/lib/assetVisuals';
 import { tvIndexMarks, tvListingMark } from '@/lib/markets-tv/assetMarks';
 import type { TvGroup, TvQuote } from '@/lib/markets-tv/types';
@@ -49,6 +49,7 @@ function TvResolvedIcon({ quote, group }: IconProps) {
     : /^[A-Z]{3}\/[A-Z]{3}$/.test(symbol) ? 'forex'
     : metalFile[symbol] || /^(CL=F|NG=F|BZ=F|NYMEX:)/.test(symbol) ? 'commodities' : group || 'world';
   const urls = useMemo(() => {
+    if (!symbol) return [];
     if (kind === 'global') return index ? [`https://s3-symbol-logo.tradingview.com/indices/${index.image}--big.svg`] : [];
     if (kind === 'forex') return [];
     const base = symbol.split(/[/-]/)[0];
@@ -78,6 +79,7 @@ function TvResolvedIcon({ quote, group }: IconProps) {
       : kind === 'commodities' && /NG/.test(symbol) ? <Flame/>
       : kind === 'commodities' && /CL|BZ/.test(symbol) ? <Droplets/>
       : kind === 'commodities' ? <Coins/>
+      : !ticker ? <Layers3/>
       : <span className="tv-ticker-lettering" data-long={ticker.length > 6}>{ticker}</span>)}
     {url && <img key={url} src={url} alt="" width="64" height="64" loading="lazy" decoding="async" referrerPolicy="no-referrer"
       className="tv-mark-image" onLoad={() => setLoadedUrl(url)} onError={() => setAttempt(attempt + 1)}/>}

@@ -5,7 +5,7 @@ import { tvSceneText } from '@/lib/markets-tv/scene-display';
 import { tvOrigin } from '@/lib/markets-tv/client';
 import { TvBrandMark } from './TvBrandMark';
 import type { TvLanguage } from '@/lib/markets-tv/types';
-import { tvMenuText } from './TvSideMenu';
+import { tvMenuText } from './tvMenuCopy';
 
 // Clock updates stay inside this leaf; quote cards never subscribe to its timer.
 export const TvClock = memo(function TvClock({ language }: { language: TvLanguage }) {

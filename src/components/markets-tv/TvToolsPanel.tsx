@@ -5,7 +5,7 @@ import { ArrowLeft, ArrowRight, Maximize, Pause, Play, RefreshCw } from 'lucide-
 import { tvText } from '@/lib/markets-tv/i18n';
 import { tvSceneText } from '@/lib/markets-tv/scene-display';
 import type { TvLanguage } from '@/lib/markets-tv/types';
-import { tvMenuText } from './TvSideMenu';
+import { tvMenuText } from './tvMenuCopy';
 import './menu-controls.css';
 
 type Props = {
