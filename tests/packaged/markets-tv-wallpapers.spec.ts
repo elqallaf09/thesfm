@@ -19,11 +19,11 @@ test('section shortcuts jump directly to markets and account, and Back restores 
   await page.setViewportSize({ width: 390, height: 844 });
   await start(page);
   await key(page, 'sections').focus();
-  await page.keyboard.press('ArrowLeft');
-  await expect(key(page, 'wallpapers')).toBeFocused();
-  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowDown');
+  await expect(key(page, 'menu:hall')).toBeFocused();
+  await page.keyboard.press('ArrowUp');
   await expect(key(page, 'sections')).toBeFocused();
-  for (const [group, target] of [['markets', 'menu:allStocks'], ['account', 'my-account']]) {
+  for (const [group, target] of [['markets', 'menu:allStocks'], ['account', 'account']]) {
     await key(page, 'sections').click();
     await expect(key(page, 'jump:overview')).toBeFocused();
     await key(page, `jump:${group}`).focus();
@@ -42,7 +42,8 @@ test('all six bundled wallpapers render, apply, survive reload and restore the o
   await expect(root).toHaveAttribute('data-tv-wallpaper', 'original');
   for (const id of [...wallpaperIds.filter(value => value !== 'original'), 'original']) {
     await openTvMenu(page);
-    await key(page, 'wallpapers').click();
+    await key(page, 'settings').click();
+    await key(page, 'settings-wallpapers').click();
     const grid = page.locator('.tv-wallpaper-grid');
     await expect(grid.getByRole('button')).toHaveCount(7);
     const tile = key(page, `wallpaper:${id}`);
@@ -65,12 +66,14 @@ test('all six bundled wallpapers render, apply, survive reload and restore the o
     }
   }
   await openTvMenu(page);
-  await key(page, 'wallpapers').click();
+  await key(page, 'settings').click();
+    await key(page, 'settings-wallpapers').click();
   await key(page, 'wallpaper:kuwait-bay').click();
   await page.reload();
   await expect(root).toHaveAttribute('data-tv-wallpaper', 'kuwait-bay');
   await openTvMenu(page);
-  await key(page, 'wallpapers').click();
+  await key(page, 'settings').click();
+    await key(page, 'settings-wallpapers').click();
   await expect(key(page, 'wallpaper:kuwait-bay')).toHaveAttribute('aria-pressed', 'true');
   await page.keyboard.press('Escape');
   await expect(root).toHaveAttribute('data-tv-wallpaper', 'kuwait-bay');
