@@ -257,8 +257,11 @@ test('strips page fills the viewport, browses all rows and omits dashboard reque
   await expect(page.getByRole('dialog')).toBeVisible();
   await expect(page.locator('.tv-market-strip-track').first()).toHaveCSS('animation-play-state', 'running');
   await page.keyboard.press('Escape');
-  quotePrice = 124.45;
+  // Opening Screen settings can trigger a scheduled quote refresh, especially on slow WebKit.
+  // Change the mocked provider price only after Screen tools opens so Refresh must observe the new tick.
   await openTvHeaderActions(page);
+  await expect(page.locator('.tv-strip-price').first()).toContainText('123.45');
+  quotePrice = 124.45;
   await page.getByRole('button', { name: 'Refresh', exact: true }).click();
   await expect(page.locator('.tv-strip-price').first()).toContainText('124.45');
   await expect(page.locator('.tv-market-strip-item').first()).toHaveAttribute('data-tick', 'up');

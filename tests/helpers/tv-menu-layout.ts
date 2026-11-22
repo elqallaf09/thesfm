@@ -3,8 +3,8 @@ import { TV_EXTRA_NEWS_CHANNELS } from '../../src/lib/markets-tv/newsReceiver';
 
 const destinations = ['hall', 'brief', 'map', 'sessions', 'allStocks', 'kuwait', 'gulf', 'world', 'assets', 'crypto', 'forex', 'strips', 'news', 'technology', ...TV_EXTRA_NEWS_CHANNELS, 'watchlist', 'investments'];
 export const TV_MENU_KEYS = [
-  'menu-close', 'sections', 'wallpapers', ...destinations.map(key => `menu:${key}`),
-  'customize', 'settings', 'my-account', 'switch-account', 'pair', 'more',
+  'menu-close', 'sections', ...destinations.map(key => `menu:${key}`),
+  'customize', 'settings', 'account',
 ];
 
 /** Check the clipped viewport of the scrollable list, not only the document viewport. */

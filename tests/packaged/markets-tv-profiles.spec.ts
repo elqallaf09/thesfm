@@ -90,6 +90,7 @@ for (const language of ['ar', 'en', 'fr'] as const) {
     await expectNoRenderedCredentials(page);
 
     await openTvMenu(page);
+    await page.locator('[data-tv-focus-key=account]').click();
     await page.locator('[data-tv-focus-key=switch-account]').click();
     await expect(picker).toBeVisible();
     await expect(page.locator('.tv-portfolio-position')).toHaveCount(0);
@@ -108,6 +109,7 @@ for (const language of ['ar', 'en', 'fr'] as const) {
     await expectNoRenderedCredentials(page);
 
     await openTvMenu(page);
+    await page.locator('[data-tv-focus-key=account]').click();
     await page.locator('[data-tv-focus-key=switch-account]').click();
     await expect(picker).toBeVisible();
     await picker.locator('[data-tv-focus-key=account-guest]').press('Enter');

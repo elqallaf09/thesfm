@@ -56,7 +56,7 @@ for (const language of ['ar', 'en', 'fr'] as const) for (const theme of ['light'
     await fixture(page, language, theme);
     const menu = page.locator('.tv-side-menu');
     await expect(menu.locator('button')).toHaveCount(orderedKeys.length);
-    await expect(menu.locator('[data-tv-focus-key=pair]')).toHaveText(signIn[language]);
+    await expect(menu.locator('[data-tv-focus-key=account]')).toHaveText(signIn[language]);
     await expect(page.locator('.tv-header-actions,.tv-viewing-nav,.tv-scene-tabs,.tv-footer')).toHaveCount(0);
     await expect(menu.locator('[aria-current=page]')).toHaveAttribute('data-tv-focus-key', 'menu:hall');
     for (const [width, height] of [[960, 540], [1280, 720], [1920, 1080], [390, 844]]) {
@@ -84,7 +84,7 @@ for (const language of ['ar', 'en', 'fr'] as const) {
       await expectTvMenuActionFits(page, key);
     }
     await page.keyboard.press('ArrowDown');
-    await expect(page.locator('[data-tv-focus-key=more]')).toBeFocused();
+    await expect(page.locator('[data-tv-focus-key=account]')).toBeFocused();
     for (const key of orderedKeys.slice(0, -1).reverse()) {
       await page.keyboard.press('ArrowUp');
       await expectTvMenuActionFits(page, key);
@@ -118,7 +118,8 @@ for (const language of ['ar', 'en', 'fr'] as const) {
 for (const language of ['ar', 'en', 'fr'] as const) {
   test(`side menu ${language}: My account opens the profile handoff with remote focus and Back`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: 960, height: 540 });
-    await fixture(page, language);
+    await fixture(page, language, 'light', true);
+    await page.locator('[data-tv-focus-key=account]').click();
     await focusTvMenuAction(page, 'my-account');
     await expect(page.locator('[data-tv-focus-key=my-account]')).toHaveText(myAccount[language]);
     await page.keyboard.press('Enter');
@@ -144,12 +145,13 @@ for (const language of ['ar', 'en', 'fr'] as const) {
     await expect(page.locator('[data-tv-dialog]')).toHaveCount(0);
     await expect(page.locator('[data-tv-focus-key=menu-toggle]')).toBeFocused();
     await openTvMenu(page);
-    await expect(page.locator('[data-tv-focus-key=pair]')).toHaveText(signIn[language]);
+    await expect(page.locator('[data-tv-focus-key=account]')).toHaveText(myAccount[language]);
   });
 }
 
 test('My account opens the normal profile route without transferring a paired-TV credential', async ({ page }) => {
   const requests = await fixture(page, 'en', 'dark', true);
+  await page.locator('[data-tv-focus-key=account]').click();
   await focusTvMenuAction(page, 'my-account');
   await page.keyboard.press('Enter');
   await expect(page.locator('.tv-my-account')).not.toContainText('Living room QA');
@@ -197,13 +199,43 @@ test('existing saved shortcuts still play directly after the channel editor is r
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('sfm-markets-tv-settings-v1') || '{}').broadcastChannel)).toBe('technology');
 });
 
+test('screen and account actions have one root entry with secondary actions in their proper sections', async ({ page }) => {
+  await fixture(page, 'ar');
+  const menu = page.locator('.tv-side-menu');
+  for (const removed of ['wallpapers', 'more', 'my-account', 'switch-account', 'pair']) {
+    await expect(menu.locator(`[data-tv-focus-key="${removed}"]`)).toHaveCount(0);
+  }
+  await expect(menu.locator('[data-tv-focus-key=account]')).toHaveText('تسجيل الدخول');
+  await menu.locator('[data-tv-focus-key=settings]').click();
+  await expect(page.locator('[data-tv-focus-key=settings-wallpapers]')).toBeVisible();
+  await page.locator('[data-tv-focus-key=settings-tab-display]').click();
+  await expect(page.locator('[data-tv-focus-key=settings-tools]')).toBeVisible();
+  await page.locator('[data-tv-focus-key=settings-tools]').click();
+  await expect(page.locator('#tv-tools-dialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+});
+
+test('paired account options open within one menu row and Back restores that row', async ({ page }) => {
+  await fixture(page, 'en', 'dark', true);
+  const menu = page.locator('.tv-side-menu');
+  await expect(menu.locator('[data-tv-focus-key=account]')).toHaveText('My account');
+  await menu.locator('[data-tv-focus-key=account]').click();
+  await expect(menu.locator('[data-tv-focus-key=my-account]')).toBeFocused();
+  await expect(menu.locator('[data-tv-focus-key=switch-account]')).toHaveText('Switch / add account');
+  await expect(menu.locator('[data-tv-focus-key=pair]')).toHaveText('Sign out');
+  await menu.locator('[data-tv-focus-key=menu-close]').click();
+  await expect(menu.locator('[data-tv-focus-key=account]')).toBeFocused();
+  await expect(menu.locator('[data-tv-focus-key=pair]')).toHaveCount(0);
+});
+
 test('guest signs in through the existing pairing flow and sees a labelled sign-out action', async ({ page }) => {
   await fixture(page, 'en');
-  await expect(page.locator('[data-tv-focus-key=pair]')).toHaveText('Sign in');
+  await expect(page.locator('[data-tv-focus-key=account]')).toHaveText('Sign in');
   await page.route('**/api/tv/pair', route => route.fulfill({ json: route.request().method() === 'POST'
     ? { code: 'ABCDEF123456', secret: 'd'.repeat(64), expiresAt: '2026-11-19T10:10:00Z' }
     : { state: 'active', token: deviceToken } }));
-  await page.locator('[data-tv-focus-key=pair]').click();
+  await page.locator('[data-tv-focus-key=account]').click();
   await expect(page.locator('#tv-dialog-title')).toHaveText('Sign in');
   await page.locator('.tv-pair-content button').click();
   await expect(page.locator('.tv-pair-code')).toHaveText('ABCD — EF12 — 3456');
@@ -211,6 +243,8 @@ test('guest signs in through the existing pairing flow and sees a labelled sign-
   await expect(page.locator('[data-tv-dialog]')).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => localStorage.getItem('sfm-markets-tv-device-v1'))).toBe(deviceToken);
   await openTvMenu(page);
+  await expect(page.locator('[data-tv-focus-key=account]')).toHaveText('My account');
+  await page.locator('[data-tv-focus-key=account]').click();
   await expect(page.locator('[data-tv-focus-key=pair]')).toHaveText('Sign out');
 });
 
@@ -227,6 +261,7 @@ test('sign out cancellation preserves access and successful confirmation removes
   await chooseTvDestination(page, 'investments');
   await expect(page.locator('.tv-portfolio-position')).toContainText('Private fixture holding');
   await openTvMenu(page);
+  await page.locator('[data-tv-focus-key=account]').click();
   await expect(page.locator('[data-tv-focus-key=pair]')).toHaveText('Sign out');
   await page.locator('[data-tv-focus-key=pair]').click();
   await expect(page.locator('[data-tv-focus-key=sign-out-cancel]')).toBeFocused();
@@ -235,6 +270,7 @@ test('sign out cancellation preserves access and successful confirmation removes
   expect(await page.evaluate(() => localStorage.getItem('sfm-markets-tv-device-v1'))).toBe(deviceToken);
   await expect(page.locator('.tv-portfolio-position')).toContainText('Private fixture holding');
   await openTvMenu(page);
+  await page.locator('[data-tv-focus-key=account]').click();
   await page.locator('[data-tv-focus-key=pair]').click();
   await page.locator('[data-tv-focus-key=sign-out-confirm]').click();
   await expect.poll(() => deletions).toBe(1);
@@ -242,7 +278,7 @@ test('sign out cancellation preserves access and successful confirmation removes
   await expect(page.locator('.tv-portfolio-position')).toHaveCount(0);
   await expect(page.locator('[data-tv-root]')).not.toContainText('Private fixture holding');
   await openTvMenu(page);
-  await expect(page.locator('[data-tv-focus-key=pair]')).toHaveText('Sign in');
+  await expect(page.locator('[data-tv-focus-key=account]')).toHaveText('Sign in');
   await chooseTvDestination(page, 'investments');
   await expect(page.locator('.tv-portfolio-gate')).toBeVisible();
 });
@@ -255,6 +291,7 @@ test('failed sign out retains the paired state, shows an error and permits retry
     deletions++;
     return route.fulfill({ status: fail ? 503 : 200, json: fail ? { code: 'UNAVAILABLE' } : { success: true } });
   });
+  await page.locator('[data-tv-focus-key=account]').click();
   await expect(page.locator('[data-tv-focus-key=pair]')).toHaveText(signOut.fr);
   await page.locator('[data-tv-focus-key=pair]').click();
   await page.locator('[data-tv-focus-key=sign-out-confirm]').click();
@@ -293,6 +330,7 @@ for (const status of [200, 401]) {
     await page.route('**/api/tv/pair', route => route.fulfill({ json: route.request().method() === 'POST'
       ? { code: 'ABCDEF123456', secret: 'd'.repeat(64), expiresAt: '2026-11-19T10:10:00Z' }
       : { state: 'active', token: nextToken } }));
+    await page.locator('[data-tv-focus-key=account]').click();
     await page.locator('[data-tv-focus-key=pair]').click();
     // Commit the first lazy sign-out panel while the test clock is paused.
     await page.clock.runFor(500);
@@ -304,8 +342,8 @@ for (const status of [200, 401]) {
     await page.evaluate(() => window.dispatchEvent(new Event('online')));
     await expect.poll(() => page.evaluate(() => localStorage.getItem('sfm-markets-tv-device-v1'))).toBeNull();
     await openTvMenu(page);
-    await expect(page.locator('[data-tv-focus-key=pair]')).toHaveText('Sign in');
-    await page.locator('[data-tv-focus-key=pair]').click();
+    await expect(page.locator('[data-tv-focus-key=account]')).toHaveText('Sign in');
+    await page.locator('[data-tv-focus-key=account]').click();
     // Let React commit the first lazy panel while the test clock is paused.
     await page.clock.runFor(500);
     await page.locator('.tv-pair-content button').click();
@@ -317,6 +355,7 @@ for (const status of [200, 401]) {
     await expect(page.locator('.tv-world-sessions')).toBeVisible();
     await openTvMenu(page);
     await expect(page.locator('.tv-side-menu-account-name')).toHaveText('New living room QA');
+    await page.locator('[data-tv-focus-key=account]').click();
     await page.locator('[data-tv-focus-key=pair]').click();
     const confirm = page.locator('[data-tv-focus-key=sign-out-confirm]');
     await expect(confirm).toBeDisabled();

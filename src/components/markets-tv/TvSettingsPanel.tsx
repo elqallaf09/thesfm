@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState, type ButtonHTMLAttributes, type KeyboardEvent, type ReactNode } from 'react';
-import { Check, Image as ImageIcon, Languages, Monitor, Play, RotateCcw } from 'lucide-react';
+import { Check, Image as ImageIcon, Languages, Monitor, Play, RotateCcw, Wrench } from 'lucide-react';
 import { TV_GROUPS, TV_STRIP_SPEEDS, DEFAULT_TV_STRIP_SPEED, type TvDisplayMode, type TvSettings } from '@/lib/markets-tv/types';
 import { tvText } from '@/lib/markets-tv/i18n';
 import { TV_SCENE_ORDER, tvSceneText } from '@/lib/markets-tv/scene-display';
@@ -39,10 +39,10 @@ function Choice({ selected, children, ...props }: ButtonHTMLAttributes<HTMLButto
   </button>;
 }
 
-export function TvSettingsPanel({ settings, change, stripsOnly = false, displayMode = 'viewing', changeDisplayMode, customize, onReplay, onWallpapers }: {
+export function TvSettingsPanel({ settings, change, stripsOnly = false, displayMode = 'viewing', changeDisplayMode, customize, onReplay, onWallpapers, onTools }: {
   settings: TvSettings; change: (value: TvSettings) => void; stripsOnly?: boolean;
   displayMode?: TvDisplayMode; changeDisplayMode?: (mode: TvDisplayMode) => void;
-  customize: () => void; onReplay?: () => void; onWallpapers?: () => void;
+  customize: () => void; onReplay?: () => void; onWallpapers?: () => void; onTools?: () => void;
 }) {
   const [section, setSection] = useState<SettingsSection>('appearance');
   const content = useRef<HTMLDivElement>(null);
@@ -117,6 +117,11 @@ export function TvSettingsPanel({ settings, change, stripsOnly = false, displayM
         </Setting>}
       </div>
       <div className="tv-settings-section" role="tabpanel" id="tv-settings-panel-display" aria-labelledby="tv-settings-tab-display" hidden={section !== 'display'}>
+        {onTools && <Setting label={tvMenuText(settings.language, 'tools')} wide>
+          <button type="button" data-tv-focus-key="settings-tools" onClick={onTools}>
+            <Wrench aria-hidden="true"/><span>{tvMenuText(settings.language, 'tools')}</span>
+          </button>
+        </Setting>}
         {changeDisplayMode && <Setting label={tvSceneText(settings.language, 'displayMode')} wide>
           <div className="tv-segment" role="group" aria-label={tvSceneText(settings.language, 'displayMode')}>
             {(['viewing', 'browse', 'strips'] as const).map(mode => <Choice key={mode} selected={displayMode === mode} onClick={() => changeDisplayMode(mode)}>
