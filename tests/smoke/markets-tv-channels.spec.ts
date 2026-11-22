@@ -150,6 +150,33 @@ test('new listings news shows a labelled US stock strip when verified new-listin
   await expect(strip.locator('.tv-marquee-track')).toHaveCSS('animation-play-state', 'running');
 });
 
+test('new listings strip falls back to clearly labelled indices if US directory has no valid prices', async ({ page }) => {
+  await fixtures(page);
+  await page.addInitScript(() => localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ language: 'ar' })));
+  await page.route('**/api/market/special-news?topic=new-stocks**', route => {
+    const ticker = new URL(route.request().url()).searchParams.get('part') === 'ticker';
+    return route.fulfill({ json: ticker
+      ? { success: true, topic: 'new-stocks', tickerItems: [], quoteStatus: 'rights-unverified' }
+      : { success: true, topic: 'new-stocks', items: [], lastSuccessfulUpdate: new Date().toISOString() } });
+  });
+  await page.route('**/api/tv/snapshot?*', route => {
+    const group = new URL(route.request().url()).searchParams.get('group');
+    if (group !== 'us' && group !== 'global') return route.fallback();
+    return route.fulfill({ json: { group, summary: [], quotes: group === 'us' ? [] : [{
+      symbol: 'SP500', name: 'Market benchmark', nameAr: 'مؤشر السوق', price: 5000,
+      currency: 'USD', source: 'QA index provider', observedAt: new Date().toISOString(),
+      changePercent: 1, exchange: null, country: 'US', status: 'available',
+    }] } });
+  });
+  await page.goto('/tv');
+  await closeTvMenu(page);
+  await chooseTvBroadcast(page, 'newStocksNews');
+  const strip = page.locator('.tv-quote-marquee');
+  await expect(strip.locator('.tv-marquee-caption')).toHaveText('مؤشرات السوق العالمية · ليست إدراجات جديدة');
+  await expect(strip.locator('.tv-marquee-set').first()).toContainText('SP500');
+  await expect(page.locator('.tv-channel-ticker-status')).toHaveCount(0);
+});
+
 test('new listings news prefers verified newly-listed quotes over market-wide fallback', async ({ page }) => {
   await fixtures(page);
   await page.addInitScript(() => localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ language: 'en' })));
