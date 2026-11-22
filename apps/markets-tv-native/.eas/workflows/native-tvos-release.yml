@@ -34,8 +34,6 @@ jobs:
       SFM_TV_BUILD_NUMBER: ${{ needs.tvos.outputs.app_build_version }}
       SFM_TV_APP_VERSION: ${{ needs.tvos.outputs.app_version }}
       SFM_TV_BUNDLE: ${{ needs.tvos.outputs.app_identifier }}
-      SFM_TV_SIMULATOR: ${{ needs.tvos.outputs.simulator }}
-      SFM_TV_DISTRIBUTION: ${{ needs.tvos.outputs.distribution }}
     steps:
       - uses: eas/checkout
       - name: Read the selected project and Apple beta
@@ -57,8 +55,10 @@ jobs:
           assert.equal(process.env.SFM_TV_BUILD_NUMBER, String(c.ios.buildNumber));
           assert.equal(e.cli.appVersionSource, 'local');
           assert.equal(String(e.submit.production.ios.ascAppId), '6832194114');
-          assert.equal(process.env.SFM_TV_SIMULATOR, 'false');
-          assert.equal(process.env.SFM_TV_DISTRIBUTION, 'store');
+          // Optional workflow metadata may be null for a device build.
+          assert.equal(e.build.production.ios.simulator, false);
+          assert.equal(e.build.production.env.EXPO_TV, '1');
+          assert.equal(e.build.production.distribution ?? 'store', 'store');
           assert.ok(process.env.SFM_TV_BUILD_ID);
           NODE
           for attempt in $(seq 1 20); do
