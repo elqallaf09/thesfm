@@ -12,7 +12,7 @@ test('packaged pairing explains HTTP failures and permits a successful retry',as
  });
  await openAndroidTvPackage(page);
  await openTvMenu(page);
- await page.locator('[data-tv-focus-key=pair]').click();
+ await page.locator('[data-tv-focus-key=account]').click();
  const create=page.locator('.tv-pair-content button');
  for(const [code,message] of [[403,'This device could not start pairing'],[429,'Too many pairing attempts'],[503,'Pairing is temporarily unavailable']] as const){
   status=code;await create.click();await expect(page.getByRole('alert')).toContainText(message);await expect(create).toBeEnabled();await expect(page.locator('.tv-pair-code')).toHaveCount(0);
