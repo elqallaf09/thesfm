@@ -1,0 +1,78 @@
+name: Verify existing SFM Apple TV build 6
+on:
+  push:
+    branches: ['verify/sfm-native-build6-20261122']
+  workflow_dispatch: {}
+defaults:
+  tools:
+    node: '22.13.0'
+    pnpm: '11.1.3'
+jobs:
+  verify:
+    name: Read the exact existing Apple TV beta
+    runs_on: linux-medium
+    environment: production
+    env:
+      EXPO_TV: '1'
+    steps:
+      - uses: eas/checkout
+      - name: Match the uploaded source and Apple beta
+        run: |
+          set -euo pipefail
+          if [ -f apps/markets-tv-native/eas.json ]; then cd apps/markets-tv-native; fi
+          test -f eas.json
+          pnpm install --frozen-lockfile
+          pnpm exec expo config --json > /tmp/sfm-existing-tvos-config.json
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const c = JSON.parse(fs.readFileSync('/tmp/sfm-existing-tvos-config.json', 'utf8'));
+          const e = JSON.parse(fs.readFileSync('eas.json', 'utf8'));
+          assert.equal(c.extra.eas.projectId, '7ee7b69f-d967-42e9-b259-916469ab7f84');
+          assert.equal(c.ios.bundleIdentifier, 'com.thesfm.marketstv.native');
+          assert.equal(c.version, '0.2.1');
+          assert.equal(String(c.ios.buildNumber), '6');
+          assert.equal(e.cli.appVersionSource, 'local');
+          assert.equal(e.build.production.ios.simulator, false);
+          assert.equal(e.build.production.env.EXPO_TV, '1');
+          assert.equal(e.build.production.distribution ?? 'store', 'store');
+          assert.equal(String(e.submit.production.ios.ascAppId), '6832194114');
+          NODE
+          pnpm dlx eas-cli@27.11.0 build:list --platform ios --status finished --distribution store --build-profile production --app-version 0.2.1 --app-build-version 6 --app-identifier com.thesfm.marketstv.native --git-commit-hash cb49ecca312d562c697973f9cd53a8a88c7285e7 --limit 10 --non-interactive --json > /tmp/sfm-existing-tvos-builds.json
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const builds = JSON.parse(fs.readFileSync('/tmp/sfm-existing-tvos-builds.json', 'utf8'));
+          assert.ok(Array.isArray(builds));
+          assert.equal(builds.length, 1, 'Expected exactly one finished build from the released source');
+          const b = builds[0];
+          assert.match(b.id, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+          assert.equal(b.app.id, '7ee7b69f-d967-42e9-b259-916469ab7f84');
+          assert.equal(b.appIdentifier, 'com.thesfm.marketstv.native');
+          assert.equal(b.appVersion, '0.2.1');
+          assert.equal(String(b.appBuildVersion), '6');
+          assert.equal(b.gitCommitHash, 'cb49ecca312d562c697973f9cd53a8a88c7285e7');
+          assert.equal(b.buildProfile, 'production');
+          assert.equal(String(b.platform).toLowerCase(), 'ios');
+          assert.equal(String(b.distribution).toLowerCase(), 'store');
+          assert.equal(String(b.status).toLowerCase(), 'finished');
+          assert.notEqual(b.isForIosSimulator, true);
+          fs.writeFileSync('/tmp/sfm-existing-tvos-build-id', b.id);
+          console.log('Existing signed Apple TV build', b.id, b.appVersion, b.appBuildVersion, b.gitCommitHash);
+          NODE
+          for attempt in $(seq 1 20); do
+            pnpm dlx eas-cli@27.11.0 submit:status --platform ios --profile production --non-interactive --json > /tmp/sfm-existing-tvos-apple-state.json
+            if node <<'NODE'
+          const fs = require('node:fs');
+          const buildId = fs.readFileSync('/tmp/sfm-existing-tvos-build-id', 'utf8').trim();
+          const {ios} = JSON.parse(fs.readFileSync('/tmp/sfm-existing-tvos-apple-state.json', 'utf8'));
+          if (String(ios?.ascAppIdentifier) !== '6832194114') throw Error('Unexpected Apple TV app');
+          const b = ios.testFlightBuilds?.find(b => b.appVersion === '0.2.1' && String(b.buildNumber) === '6' && b.easBuildId === buildId && !b.expired);
+          if (!b) { console.log('Exact existing Apple TV build not available yet'); process.exit(1); }
+          console.log('Existing Apple TV beta', buildId, b.appVersion, b.buildNumber, b.processingState, b.internalState);
+          process.exit(b.processingState === 'VALID' && b.internalState === 'IN_BETA_TESTING' ? 0 : 1);
+          NODE
+            then exit 0; fi
+            if [ "$attempt" -lt 20 ]; then sleep 45; fi
+          done
+          exit 1
