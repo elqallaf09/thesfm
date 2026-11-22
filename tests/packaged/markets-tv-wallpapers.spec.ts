@@ -112,3 +112,35 @@ test('appearance settings expose the selected wallpaper and open the same galler
   await page.reload();
   await expect(root).toHaveAttribute('data-tv-wallpaper', 'tokyo');
 });
+
+
+test('a pending initial focus never overrides the next wallpaper selected with the remote', async ({ page }) => {
+  await start(page, 'kuwait-bay');
+  await key(page, 'settings').click();
+  await page.evaluate(() => {
+    const schedule = window.requestAnimationFrame;
+    const cancel = window.cancelAnimationFrame;
+    const frames = new Map<number, FrameRequestCallback>();
+    let nextId = 0;
+    window.requestAnimationFrame = callback => { frames.set(++nextId, callback); return nextId; };
+    window.cancelAnimationFrame = id => { frames.delete(id); };
+    Object.assign(window, { flushWallpaperFocus: () => {
+      window.requestAnimationFrame = schedule;
+      window.cancelAnimationFrame = cancel;
+      for (const callback of frames.values()) callback(performance.now());
+      frames.clear();
+    } });
+  });
+  await key(page, 'settings-wallpapers').click();
+  const tokyo = key(page, 'wallpaper:tokyo');
+  await tokyo.focus();
+  await page.evaluate(() => {
+    const state = window as Window & { flushWallpaperFocus: () => void };
+    state.flushWallpaperFocus();
+  });
+  await expect(tokyo).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('[data-tv-root]')).toHaveAttribute('data-tv-wallpaper', 'tokyo');
+  await page.reload();
+  await expect(page.locator('[data-tv-root]')).toHaveAttribute('data-tv-wallpaper', 'tokyo');
+});

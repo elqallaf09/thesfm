@@ -15,7 +15,13 @@ export function TvWallpaperPicker({ language, selected, packaged, onSelect }: Pr
   useEffect(() => {
     // Settings and this gallery share one dialog. Move to the saved tile even
     // when the modal stayed open, after its focus-return target was captured.
-    const frame = requestAnimationFrame(() => grid.current?.querySelector<HTMLButtonElement>('[aria-pressed=true]')?.focus());
+    const frame = requestAnimationFrame(() => {
+      const gallery = grid.current;
+      // A remote or pointer may have already moved to another tile this frame.
+      if (gallery && !gallery.contains(document.activeElement)) {
+        gallery.querySelector<HTMLButtonElement>('[aria-pressed=true]')?.focus();
+      }
+    });
     return () => cancelAnimationFrame(frame);
   }, [selected]);
   return <div ref={grid} className="tv-wallpaper-grid" data-tv-focus-grid>
