@@ -13,7 +13,8 @@ const items = changes.map((changePercent, index) => ({
   currency: 'USD', region: 'US', changePercent,
 }));
 
-async function openStocks(page: Page, theme: 'light' | 'dark', beforeAllStocks?: () => Promise<void>, directory = items) {
+type TestListing = (typeof items)[number] & { listingKey?: string };
+async function openStocks(page: Page, theme: 'light' | 'dark', beforeAllStocks?: () => Promise<void>, directory: TestListing[] = items, measured = false) {
   await page.addInitScript(theme => {
     localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({
       language: 'ar', theme, accent: 'champagne', displayMode: 'viewing', autoRotate: false,
@@ -36,14 +37,16 @@ async function openStocks(page: Page, theme: 'light' | 'dark', beforeAllStocks?:
   await page.route('**/api/tv/snapshot?*', route => {
     const params = new URL(route.request().url()).searchParams;
     const symbols: string[] = JSON.parse(params.get('symbols') || '[]');
+    const keys: string[] = JSON.parse(params.get('listingKeys') || '[]');
     // Reserve AAPL for All Stocks so the logo test can intercept its first load.
-    const selected = symbols.length ? directory.filter(item => symbols.includes(item.symbol)) : directory.slice(1, 7);
+    const selected = keys.length ? directory.filter(item => item.listingKey && keys.includes(item.listingKey))
+      : symbols.length ? directory.filter(item => symbols.includes(item.symbol)) : directory.slice(1, 7);
     const quotes = selected.map(item => ({
       ...item, price: item.symbol === 'QA1' ? 0.939 : 123.45,
       source: 'Presentation QA source',
       observedAt: item.symbol === 'QA1' ? retainedAt : now, receivedAt: now,
       status: item.symbol === 'QA1' ? 'stale' : 'delayed', delayType: 'delayed',
-      exchange: 'US', country: 'US', changeBasis: 'session',
+      exchange: item.region, country: null, changeBasis: 'session',
     }));
     return route.fulfill({ json: {
       quotes, group: params.get('group'), total: quotes.length, available: quotes.length, generatedAt: now,
@@ -58,11 +61,64 @@ async function openStocks(page: Page, theme: 'light' | 'dark', beforeAllStocks?:
   await openAndroidTvPackage(page);
   await beforeAllStocks?.();
   await chooseTvDestination(page, 'allStocks');
-  await expect(page.locator('.tv-all-stocks .tv-hall-row')).toHaveCount(6);
+  const rows = page.locator('.tv-all-stocks .tv-hall-row');
+  if (measured) await expect.poll(() => rows.count()).toBeGreaterThan(12);
+  else await expect(rows).toHaveCount(6);
   await expect(page.locator('.tv-all-stocks .tv-headline-story')).toHaveCount(8);
   await page.evaluate(() => document.fonts.ready);
   return { retainedAt };
 }
+
+test('portrait directory fills the available table, quotes both batches and keeps its place on rotation', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 954, height: 1625 });
+  const directory = Array.from({ length: 50 }, (_, index) => ({
+    ...items[0], name: 'Portrait test listing', symbol: index === 0 ? '000001' : index === 1 ? '00700' : `QA${index}`,
+    region: index === 0 ? 'TD_XSHE' : index === 1 ? 'TD_XHKG' : 'US',
+  })).map(item => ({ ...item, listingKey: `${item.region}:${item.symbol}` }));
+  const requested: string[][] = [];
+  page.on('request', request => {
+    const url = new URL(request.url());
+    if (url.pathname === '/api/tv/snapshot' && url.searchParams.has('listingKeys')) {
+      requested.push(JSON.parse(url.searchParams.get('listingKeys')!));
+    }
+  });
+  // Install both routes before the hall can warm either issuer image.
+  const logoRequests: string[] = [];
+  await page.route('**/image-stock/000001.SZ.png', route => {
+    logoRequests.push('000001.SZ');
+    return route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><circle cx="16" cy="16" r="12"/></svg>' });
+  });
+  await page.route('**/image-stock/0700.HK.png', route => {
+    logoRequests.push('0700.HK');
+    return route.fulfill({ status: 404, body: '' });
+  });
+  await openStocks(page, 'dark', undefined, directory, true);
+  const playback = page.locator('[data-tv-focus-key="stocks-playback"]');
+  if (await playback.getAttribute('aria-pressed') === 'true') await playback.click();
+  await expect(page.locator('.tv-stock-pagination')).toContainText('1 /');
+  const rows = page.locator('.tv-all-stocks .tv-hall-row');
+  await expect(rows.first().locator('.tv-asset-icon')).toHaveAttribute('data-logo-state', 'loaded');
+  await expect(rows.nth(1).locator('.tv-stock-mark svg')).toBeVisible();
+  await expect(rows.nth(1).locator('.tv-ticker-lettering')).toHaveText('00700');
+  expect(logoRequests).toEqual(expect.arrayContaining(['000001.SZ', '0700.HK']));
+  const size = await rows.count();
+  await expect(page.locator('.tv-stock-coverage')).toContainText(`${size} / ${size}`);
+  expect(requested.flat()).toEqual(expect.arrayContaining(directory.slice(0, size).map(item => item.listingKey)));
+  expect(requested.every(batch => batch.length <= 12)).toBe(true);
+  const geometry = await tableGeometry(page);
+  expect(geometry.overflow).toEqual([]);
+  const last = await rows.last().boundingBox();
+  const panel = await page.locator('.tv-stock-page').boundingBox();
+  expect(Math.abs(panel!.y + panel!.height - last!.y - last!.height)).toBeLessThan(3);
+  await expect(page.locator('.tv-headline-band')).toBeInViewport({ ratio: 1 });
+  await expect(page.locator('.tv-quote-marquee')).toBeInViewport({ ratio: 1 });
+  await capturePresentation(page, testInfo, 'all-stocks-portrait');
+  await page.locator('[data-tv-focus-key="stocks-next"]').click();
+  await expect(rows.first().locator('.tv-hall-listing bdi')).toHaveText(directory[size].symbol);
+  await page.setViewportSize({ width: 1625, height: 954 });
+  await expect(rows).toHaveCount(6);
+  await expect(rows.locator('.tv-hall-listing bdi').filter({ hasText: new RegExp(`^${directory[size].symbol}$`) })).toHaveCount(1);
+});
 
 async function tableGeometry(page: Page) {
   return page.locator('.tv-all-stocks .tv-hall-table').evaluate(table => {

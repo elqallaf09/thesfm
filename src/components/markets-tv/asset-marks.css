@@ -5,6 +5,8 @@
 .tv-screen .tv-index-lettering > strong { font: 700 .83em/1 var(--font-data), monospace; color: inherit; }
 .tv-ticker-lettering { max-width: 96%; text-align: center; font: 700 .42em/1.08 var(--font-data), monospace; overflow-wrap: anywhere; }
 .tv-ticker-lettering[data-long=true] { font-size: .37em; }
+.tv-stock-mark { display: grid; justify-items: center; align-content: center; gap: 1px; width: 100%; height: 100%; overflow: hidden; color: var(--tv-text); }
+.tv-stock-mark > svg { width: 50%; height: .95em; color: var(--tv-accent); }
 .tv-screen .tv-identity-mark > img.tv-mark-image { position: absolute; inset: 0; margin: auto; opacity: 0; object-fit: contain; }
 .tv-screen .tv-identity-mark[data-logo-state=loaded] > img.tv-mark-image { opacity: 1; }
 .tv-screen .tv-identity-mark[data-issuer=svix][data-logo-state=loaded] { background: var(--tv-news-brand-background); }

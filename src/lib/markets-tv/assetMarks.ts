@@ -31,6 +31,31 @@ const shanghai = new Set(['SSE', 'XSHG', 'TD_XSHG', 'SHH']);
 const india = new Set(['NSE', 'XNSE', 'TD_XNSE', 'NSI']);
 const us = new Set(['US', 'BATS', 'BZX', 'CBOE', 'CBOE BZX', 'BTS', 'CBOE BZX EXCHANGE', 'BATS GLOBAL MARKETS']);
 
+const logoSuffixes = new Map([
+  ['XSHE', 'SZ'], ['SZSE', 'SZ'], ['SHZ', 'SZ'],
+  ['XHKG', 'HK'], ['HKEX', 'HK'], ['XTAI', 'TW'],
+  ['XTKS', 'T'], ['XJPX', 'T'], ['XETR', 'DE'], ['XFRA', 'F'],
+  ['XLON', 'L'], ['XPAR', 'PA'], ['XAMS', 'AS'], ['XSWX', 'SW'],
+  ['XSAU', 'SR'], ['TADAWUL', 'SR'], ['DSMD', 'QA'], ['QSE', 'QA'],
+  ['XKUW', 'KW'], ['XDFM', 'AE'],
+]);
+
+/** Request only a logo scoped to this listing. Preserve leading zeroes. */
+export function tvDirectoryLogo(symbol: string, exchange: string | null) {
+  const venue = (exchange || '').toUpperCase().replace(/^TD_/, '');
+  const suffix = logoSuffixes.get(gulfVenues.get(venue) ?? venue);
+  if (!suffix) return null;
+  const ticker = symbol.toUpperCase();
+  let local = ticker.endsWith('.' + suffix) ? ticker.slice(0, -(suffix.length + 1)) : ticker;
+  if (!/^[A-Z0-9][A-Z0-9-]{0,31}$/.test(local)) return null;
+  if (suffix === 'SZ' && !/^\d{6}$/.test(local)) return null;
+  if (suffix === 'HK') {
+    if (!/^\d{1,5}$/.test(local)) return null;
+    local = String(Number(local)).padStart(4, '0');
+  }
+  return `https://financialmodelingprep.com/image-stock/${local}.${suffix}.png`;
+}
+
 /** Preserve the venue on numeric and international tickers, including bare directory rows. */
 export function tvListingMark(symbol: string, exchange: string | null) {
   const venue = exchange?.toUpperCase() ?? '';

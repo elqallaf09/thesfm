@@ -159,3 +159,17 @@
   .tv-screen[dir=rtl] .tv-hall-company-copy > strong { text-align: right; }
   .tv-screen[dir=ltr] .tv-hall-company-copy > strong { text-align: left; }
 }
+
+.tv-stock-ticker-slot { display: contents; }
+@media (min-width: 761px) {
+  /* The ticker briefly unmounts between quote pages. Keep the grid stable. */
+  .tv-screen .tv-stock-ticker-slot { display: block; flex: 0 0 clamp(30px, 3.8vh, 46px); min-width: 0; }
+}
+@media (orientation: portrait) and (min-width: 761px) {
+  .tv-screen .tv-all-stocks .tv-hall-rows { max-height: none; }
+}
+@media (orientation: portrait) and (max-width: 760px) {
+  .tv-screen .tv-all-stocks .tv-hall-row { grid-template-columns: minmax(0, 1fr) auto auto; gap: .2em .5em; padding: .45em .55em; }
+  .tv-screen .tv-all-stocks .tv-hall-identity { grid-column: auto; }
+  .tv-screen .tv-all-stocks .tv-hall-row .tv-quote-evidence { display: flex; flex-wrap: wrap; gap: .2em .6em; }
+}

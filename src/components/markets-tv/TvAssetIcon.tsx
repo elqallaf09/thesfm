@@ -1,9 +1,9 @@
 'use client';
 /* eslint-disable @next/next/no-img-element -- Also rendered by packaged TV WebViews. */
 import { useMemo, useState } from 'react';
-import { Coins, Flame, Droplets, Layers3 } from 'lucide-react';
+import { Building2, Coins, Flame, Droplets, Layers3 } from 'lucide-react';
 import { getAssetVisualMeta, resolveAssetIdentity } from '@/lib/assetVisuals';
-import { tvIndexMarks, tvListingMark } from '@/lib/markets-tv/assetMarks';
+import { tvDirectoryLogo, tvIndexMarks, tvListingMark } from '@/lib/markets-tv/assetMarks';
 import type { TvGroup, TvQuote } from '@/lib/markets-tv/types';
 import { TvMarketFlag } from './TvMarketFlag';
 import './asset-marks.css';
@@ -63,7 +63,11 @@ function TvResolvedIcon({ quote, group }: IconProps) {
       symbol: kind === 'crypto' ? symbol.split(/[/-]/)[0] + '-USD' : symbol.replace('/', ''), name, exchange,
       assetType: ['crypto','forex'].includes(kind) ? kind : kind === 'commodities' ? 'commodity' : 'stock',
     };
-    if (exchange?.startsWith('TD_') && !resolveAssetIdentity(input).verified) return [];
+    if (input.assetType === 'stock' && !resolveAssetIdentity(input).verified) {
+      const qualified = tvDirectoryLogo(symbol, exchange);
+      if (qualified) return [qualified];
+      if (exchange?.startsWith('TD_')) return [];
+    }
     const url = getAssetVisualMeta(input).logoUrl;
     return url ? [url] : [];
   }, [kind, symbol, name, exchange, index]);
@@ -80,8 +84,12 @@ function TvResolvedIcon({ quote, group }: IconProps) {
       : kind === 'commodities' && /CL|BZ/.test(symbol) ? <Droplets/>
       : kind === 'commodities' ? <Coins/>
       : !ticker ? <Layers3/>
+      : !['crypto', 'global', 'commodities'].includes(kind) ? <span className="tv-stock-mark"><Building2/><span className="tv-ticker-lettering" data-long={ticker.length > 6}>{ticker}</span></span>
       : <span className="tv-ticker-lettering" data-long={ticker.length > 6}>{ticker}</span>)}
     {url && <img key={url} src={url} alt="" width="64" height="64" loading="lazy" decoding="async" referrerPolicy="no-referrer"
-      className="tv-mark-image" onLoad={() => setLoadedUrl(url)} onError={() => setAttempt(attempt + 1)}/>}
+      className="tv-mark-image" onLoad={event => {
+        if (event.currentTarget.naturalWidth > 1 && event.currentTarget.naturalHeight > 1) setLoadedUrl(url);
+        else setAttempt(attempt + 1);
+      }} onError={() => setAttempt(attempt + 1)}/>}
   </span>;
 }

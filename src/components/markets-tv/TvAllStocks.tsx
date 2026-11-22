@@ -1,9 +1,9 @@
 'use client';
 import './trading-hall.css';
 import './stock-rotation.css';
-import { useCallback, useEffect, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { ChevronLeft, ChevronRight, CircleCheck, List, Search } from 'lucide-react';
-import type { TvLanguage, TvMarket, TvNews, TvQuote, TvSnapshot } from '@/lib/markets-tv/types';
+import type { TvLanguage, TvMarket, TvNews, TvQuote } from '@/lib/markets-tv/types';
 import type { TvDirectoryCoverage, TvInstrumentPage } from '@/lib/markets-tv/selections';
 import type { TvAtlasRegion } from '@/lib/markets-tv/atlas';
 import { hallText } from '@/lib/markets-tv/hallText';
@@ -13,7 +13,8 @@ import { TvQuoteTable } from './TvQuoteTable';
 import { TvHeadlineBand } from './TvHeadlineBand';
 import { TvQuoteMarquee } from './TvQuoteMarquee';
 import { useTvTableSize } from './useTvTableSize';
-import { tvSceneHasPrice, tvStripSourceCooling } from '@/lib/markets-tv/scene-display';
+import { tvSceneHasPrice } from '@/lib/markets-tv/scene-display';
+import { useTvDirectoryQuotes } from './useTvDirectoryQuotes';
 import { createTvListingQuoteLookup } from '@/lib/markets-tv/listingIdentity';
 import { TvStockRotation } from './TvStockRotation';
 
@@ -27,22 +28,23 @@ export function TvAllStocks({ language, now, markets, initialRegion, ready, revi
   playing: boolean; suspended: boolean; initialRegion?: TvAtlasRegion;
   onQuote: (quote: TvQuote) => void; onStory: (story: TvNews) => void; onRefresh: () => void; onTickerPause: () => void; onPlayback: () => void;
 }) {
-  const [search, setSearch] = useState(''), [query, setQuery] = useState(''), [filter, setFilter] = useState<string>(initialRegion || ''), [page, setPage] = useState(0);
+  const [search, setSearch] = useState(''), [query, setQuery] = useState(''), [filter, setFilter] = useState<string>(initialRegion || ''), [offset, setOffset] = useState(0);
   const [activity, setActivity] = useState(0), [filterFocused, setFilterFocused] = useState(false);
   const interact = useCallback(() => setActivity(value => value + 1), []);
-  const PAGE_SIZE = useTvTableSize(true);
+  const table = useRef<HTMLElement>(null);
+  const PAGE_SIZE = useTvTableSize(table);
+  const page = Math.floor(offset / PAGE_SIZE);
   const regionSelected = initialRegion !== undefined && filter === initialRegion;
   const group = regionSelected ? initialRegion : 'world';
   const regionParams: Record<string, string> = regionSelected ? { scope: 'region' } : {};
   const market = regionSelected ? '' : filter;
   const scope = `${group}:${market}:${query}:${PAGE_SIZE}`;
   const [totals, setTotals] = useState<{ scope: string; total: number; directoryTotal: number } | null>(null);
-  useEffect(() => setPage(0), [PAGE_SIZE]);
   useEffect(() => {
     const nextQuery = search.trim();
     // An unchanged query, including the initial empty value, must not undo Next.
     if (nextQuery === query) return;
-    const timer = setTimeout(() => { setQuery(nextQuery); setPage(0); }, 300);
+    const timer = setTimeout(() => { setQuery(nextQuery); setOffset(0); }, 300);
     return () => clearTimeout(timer);
   }, [search, query]);
   const directoryPath = `/api/tv/instruments?${new URLSearchParams({ group, ...regionParams, market, q: query, page: String(page), pageSize: String(PAGE_SIZE) })}`;
@@ -57,24 +59,19 @@ export function TvAllStocks({ language, now, markets, initialRegion, ready, revi
   const total = matchedTotal ?? (totals?.scope === scope ? totals.total : undefined);
   const fullTotal = directoryTotal ?? (totals?.scope === scope ? totals.directoryTotal : undefined);
   const items = directory.data?.items ?? [];
-  const quoteSelection: Record<string, string> = items.every(item => item.listingKey)
-    ? { listingKeys: JSON.stringify(items.map(item => item.listingKey)) }
-    : { symbols: JSON.stringify(items.map(item => item.symbol)) };
-  const quotePath = items.length ? `/api/tv/snapshot?${new URLSearchParams({ group, ...regionParams, ...(market ? { market } : {}), pageSize: String(PAGE_SIZE), ...quoteSelection })}` : null;
-  const quotes = useTvResource<TvSnapshot>(quotePath, 60000, '', revision);
+  const quotes = useTvDirectoryQuotes(items, { group, ...regionParams, ...(market ? { market } : {}) }, PAGE_SIZE, revision, now);
   const pages = Math.max(1, Math.ceil((total ?? 0) / PAGE_SIZE));
-  const itemQuote = createTvListingQuoteLookup(items, quotes.data?.quotes ?? []);
+  const itemQuote = createTvListingQuoteLookup(items, quotes.quotes);
   const priced = items.filter(item => { const quote = itemQuote(item); return quote && tvSceneHasPrice(quote); }).length;
-  const cooling = tvStripSourceCooling(quotes.data?.quotes ?? [], quotes.data?.retryAt, now);
   const nextPage = useCallback(() => {
     // After the reading interval, give a disappearing row a stable focus target.
     // Leaving the pager focused must never prevent the next automatic page.
     if (document.activeElement?.closest('.tv-stock-page, .tv-stock-pagination')) {
       document.querySelector<HTMLButtonElement>('[data-tv-focus-key="stocks-playback"]')?.focus({ preventScroll: true });
     }
-    setPage(value => (value + 1) % pages);
-  }, [pages]);
-  const waiting = !ready || !items.length || !quotes.data || quotes.loading || Boolean(quotes.error) || directory.loading || Boolean(directory.error) || cooling;
+    setOffset(((page + 1) % pages) * PAGE_SIZE);
+  }, [page, pages, PAGE_SIZE]);
+  const waiting = !ready || !items.length || !quotes.ready || quotes.loading || Boolean(quotes.error) || directory.loading || Boolean(directory.error) || quotes.cooling;
   const browsing = filterFocused || Boolean(search.trim()) || search.trim() !== query;
   const rotationStatus = hallText(language, directory.data && total === 0 && !directory.error ? 'stocksPaused'
     : waiting ? 'stocksWaiting' : pages <= 1 ? 'stocksSinglePage' : browsing ? 'stocksBrowsing' : 'stocksPaused');
@@ -84,10 +81,10 @@ export function TvAllStocks({ language, now, markets, initialRegion, ready, revi
     if (next === 0 && step < 0 || next === pages - 1 && step > 0) {
       document.querySelector<HTMLButtonElement>('[data-tv-focus-key="stocks-playback"]')?.focus({ preventScroll: true });
     }
-    setPage(next);
+    setOffset(next * PAGE_SIZE);
   }
   // A catalog refresh can shrink the last page. Clamp only after that response arrives.
-  useEffect(() => { if (directory.data && page >= pages) setPage(pages - 1); }, [directory.data, page, pages]);
+  useEffect(() => { if (directory.data && page >= pages) setOffset((pages - 1) * PAGE_SIZE); }, [directory.data, page, pages, PAGE_SIZE]);
   const exchanges = markets.filter(item => !['global', 'crypto', 'forex', 'commodities', 'watchlist'].includes(item.group));
   const coverage = directory.data?.coverage;
   const coverageLabel = coverage && coverage !== 'directory' ? coverageLabels[coverage] : null;
@@ -100,13 +97,13 @@ export function TvAllStocks({ language, now, markets, initialRegion, ready, revi
       <TvStockRotation language={language} playing={playing} blocked={suspended || waiting || browsing || pages <= 1} status={rotationStatus} cycle={`${directoryPath}:${activity}`} seconds={priced ? 12 : 8} onToggle={onPlayback} onNext={nextPage}/>
     </div></div>
     <div className="tv-stock-filters"><label className="tv-stock-search"><Search aria-hidden="true"/><input type="search" value={search} maxLength={120} onChange={event => setSearch(event.target.value)} placeholder={hallText(language, 'search')} aria-label={hallText(language, 'search')} data-tv-focus-key="stock-search"/></label>
-      <label><span>{hallText(language, 'chooseMarket')}</span><select value={filter} onChange={event => { setFilter(event.target.value); setPage(0); setFilterFocused(false); }} data-tv-focus-key="stock-market"><option value="">{hallText(language, 'allMarkets')}</option>{initialRegion && <option value={initialRegion}>{tvText(language, initialRegion)}</option>}{exchanges.filter(item => item.id !== initialRegion).map(item => <option key={item.id} value={item.id}>{language === 'ar' ? item.labelAr : language === 'fr' ? item.labelFr : item.labelEn} · {item.count.toLocaleString('en-US')}</option>)}</select></label>
+      <label><span>{hallText(language, 'chooseMarket')}</span><select value={filter} onChange={event => { setFilter(event.target.value); setOffset(0); setFilterFocused(false); }} data-tv-focus-key="stock-market"><option value="">{hallText(language, 'allMarkets')}</option>{initialRegion && <option value={initialRegion}>{tvText(language, initialRegion)}</option>}{exchanges.filter(item => item.id !== initialRegion).map(item => <option key={item.id} value={item.id}>{language === 'ar' ? item.labelAr : language === 'fr' ? item.labelFr : item.labelEn} · {item.count.toLocaleString('en-US')}</option>)}</select></label>
       <span className="tv-stock-results">{hallText(language, 'matches')} <bdi>{total?.toLocaleString('en-US') ?? '—'}</bdi></span>
     </div>
     <div className="tv-stock-coverage"><span role="status"><CircleCheck aria-hidden="true"/><bdi dir="ltr">{directory.loading || quotes.loading ? '—' : `${priced} / ${items.length}`}</bdi>{hallText(language, 'pricedOnPage')}</span><span className="tv-directory-coverage" data-coverage={coverage} role={coverageLabel ? 'status' : undefined}>{hallText(language, coverageLabel || 'directoryNote')}</span></div>
     {(directory.error || quotes.error) && <div className="tv-hall-error" role="status">{tvText(language, 'error')} <button onClick={onRefresh}>{tvText(language, 'retry')}</button></div>}
-    <section className="tv-hall-market-table tv-stock-page" style={{ '--tv-stock-page-size': PAGE_SIZE } as CSSProperties}><TvQuoteTable key={directoryPath} items={items} markets={markets} quotes={quotes.data?.quotes ?? []} language={language} now={now} loading={directory.loading || quotes.loading} emptyReason={directory.error || quotes.error ? 'error' : undefined} showUnavailable select={onQuote}/></section>
+    <section ref={table} className="tv-hall-market-table tv-stock-page" style={{ '--tv-stock-page-size': PAGE_SIZE } as CSSProperties}><TvQuoteTable key={directoryPath} items={items} markets={markets} quotes={quotes.quotes} language={language} now={now} loading={directory.loading || quotes.loading} emptyReason={directory.error || quotes.error ? 'error' : undefined} showUnavailable select={onQuote}/></section>
     <TvHeadlineBand now={now} newsLoading={newsLoading} newsError={newsError} onRetry={onRefresh} news={news} language={language} paused={newsPaused} onStory={onStory}/>
-    {ticker && <TvQuoteMarquee quotes={quotes.data?.quotes ?? []} language={language} now={now} paused={paused} speed={speed} select={onQuote} toggle={onTickerPause}/>}
+    {ticker && <div className="tv-stock-ticker-slot"><TvQuoteMarquee quotes={quotes.quotes} language={language} now={now} paused={paused} speed={speed} select={onQuote} toggle={onTickerPause}/></div>}
   </main>;
 }
