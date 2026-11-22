@@ -1,5 +1,6 @@
 .tv-quote-marquee { display: flex; align-items: stretch; flex: 0 0 auto; min-width: 0; height: clamp(30px, 3.8vh, 46px); border-block: 1px solid var(--tv-line); background: var(--tv-panel); overflow: hidden; }
 .tv-quote-marquee .tv-marquee-toggle { border: 0; border-inline-end: 1px solid var(--tv-line); border-radius: 0; flex-shrink: 0; width: 2.8em; }
+.tv-marquee-caption { display: inline-flex; align-items: center; flex: 0 1 auto; min-width: 0; max-width: min(38vw, 285px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 .6em; border-inline-end: 1px solid var(--tv-line); font-size: max(12px, .7em); color: var(--tv-muted); }
 .tv-marquee-viewport { min-width: 0; flex: 1; overflow: hidden; }
 .tv-marquee-track { position: relative; display: flex; width: max-content; height: 100%; animation: tv-quote-scroll var(--ticker-duration, 40s) linear infinite; will-change: transform; }
 .tv-marquee-set { display: flex; flex-shrink: 0; align-items: center; }
