@@ -199,6 +199,36 @@ test('existing saved shortcuts still play directly after the channel editor is r
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('sfm-markets-tv-settings-v1') || '{}').broadcastChannel)).toBe('technology');
 });
 
+test('screen and account actions have one root entry with secondary actions in their proper sections', async ({ page }) => {
+  await fixture(page, 'ar');
+  const menu = page.locator('.tv-side-menu');
+  for (const removed of ['wallpapers', 'more', 'my-account', 'switch-account', 'pair']) {
+    await expect(menu.locator(`[data-tv-focus-key="${removed}"]`)).toHaveCount(0);
+  }
+  await expect(menu.locator('[data-tv-focus-key=account]')).toHaveText('تسجيل الدخول');
+  await menu.locator('[data-tv-focus-key=settings]').click();
+  await expect(page.locator('[data-tv-focus-key=settings-wallpapers]')).toBeVisible();
+  await page.locator('[data-tv-focus-key=settings-tab-display]').click();
+  await expect(page.locator('[data-tv-focus-key=settings-tools]')).toBeVisible();
+  await page.locator('[data-tv-focus-key=settings-tools]').click();
+  await expect(page.locator('#tv-tools-dialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(menu).toHaveCount(0);
+});
+
+test('paired account options open within one menu row and Back restores that row', async ({ page }) => {
+  await fixture(page, 'en', 'dark', true);
+  const menu = page.locator('.tv-side-menu');
+  await expect(menu.locator('[data-tv-focus-key=account]')).toHaveText('My account');
+  await menu.locator('[data-tv-focus-key=account]').click();
+  await expect(menu.locator('[data-tv-focus-key=my-account]')).toBeFocused();
+  await expect(menu.locator('[data-tv-focus-key=switch-account]')).toHaveText('Switch / add account');
+  await expect(menu.locator('[data-tv-focus-key=pair]')).toHaveText('Sign out');
+  await menu.locator('[data-tv-focus-key=menu-close]').click();
+  await expect(menu.locator('[data-tv-focus-key=account]')).toBeFocused();
+  await expect(menu.locator('[data-tv-focus-key=pair]')).toHaveCount(0);
+});
+
 test('guest signs in through the existing pairing flow and sees a labelled sign-out action', async ({ page }) => {
   await fixture(page, 'en');
   await expect(page.locator('[data-tv-focus-key=account]')).toHaveText('Sign in');
