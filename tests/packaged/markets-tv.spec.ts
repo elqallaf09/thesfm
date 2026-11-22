@@ -325,7 +325,7 @@ test('pairing rejects malformed responses, times out, and accepts a valid activa
   });
   await page.route('**/api/tv/device', route => route.fulfill({ json: { device: { name: 'Test TV', settings: { language: 'en' } }, symbols: ['QA4'], alerts: [] } }));
   await openTvMenu(page);
-  await page.locator('[data-tv-focus-key="pair"]').click();
+  await page.locator('[data-tv-focus-key="account"]').click();
   const create = page.locator('.tv-pair-content button');
   await create.click();
   await expect(page.locator('.tv-pair-code')).toHaveCount(0);
