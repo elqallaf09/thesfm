@@ -55,9 +55,9 @@ test('crypto pages, topic images, currency flags and direct news access in the A
   await expect(flags.locator('[data-region="EU"]')).toBeVisible();
   await expect(flags.locator('[data-region="US"]')).toBeVisible();
 });
-test('iPhone crypto prices, 24h changes and provider evidence never overlap in RTL or LTR', async ({ page }) => {
-  const prices = [107948.01, 3471.41, 170.57, 558.37, 0.000295, 0.00000084];
-  for (const language of ['ar', 'en'] as const) {
+for (const language of ['ar', 'en'] as const) {
+  test(`iPhone crypto quotes ${language}: price, change and evidence fit`, async ({ page }) => {
+    const prices = [107948.01, 3471.41, 170.57, 558.37, 0.000295, 0.00000084];
     await page.setViewportSize({ width: 390, height: 844 });
     await page.addInitScript(({ language }) => {
       sessionStorage.setItem('sfm-tv-welcome-shown', '1');
@@ -120,7 +120,5 @@ test('iPhone crypto prices, 24h changes and provider evidence never overlap in R
       }))).toEqual([]);
       await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2)).toBe(true);
     }
-    await page.unroute('**/api/**');
-    await page.reload();
-  }
-});
+  });
+}
