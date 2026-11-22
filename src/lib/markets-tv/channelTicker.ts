@@ -11,6 +11,10 @@ export const CATEGORY_TICKERS = {
 
 const regionGroups = { europeNews: 'europe', gulfNews: 'gulf', asiaNews: 'asia', cryptoNews: 'crypto' } as const;
 export const GLOBAL_INDEX_TICKER = '/api/tv/snapshot?group=global&scene=overview';
+// A clearly labelled US market strip can run when rights-checked new-listing quotes are unavailable.
+// These are general US stocks, never represented as recent IPOs or verified new listings.
+export const NEW_LISTINGS_TICKER = `${TV_NEWS_FEEDS.newStocksNews}&part=ticker`;
+export const NEW_LISTINGS_MARKET_FALLBACK = '/api/tv/snapshot?group=us&market=US&pageSize=12';
 const symbolPattern = /^[A-Z][A-Z0-9.-]{0,14}$/;
 function record(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === 'object' ? value as Record<string, unknown> : {};

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CATEGORY_TICKERS, GLOBAL_INDEX_TICKER, channelTickerPath, channelTickerQuotes } from '@/lib/markets-tv/channelTicker';
+import { CATEGORY_TICKERS, GLOBAL_INDEX_TICKER, NEW_LISTINGS_TICKER, NEW_LISTINGS_MARKET_FALLBACK, channelTickerPath, channelTickerQuotes } from '@/lib/markets-tv/channelTicker';
 import { tvPackagedOrigin } from '@/lib/markets-tv/cors';
 
 describe('TV ticker scope and source evidence', () => {
@@ -27,6 +27,20 @@ describe('TV ticker scope and source evidence', () => {
     const quotes = [{symbol:'COMEX:GC1!'},{symbol:'COMEX:SI1!'},{symbol:'NYMEX:CL1!'}];
     expect(channelTickerQuotes(metalPath, {group:'commodities', quotes})).toEqual(quotes.slice(0, 2));
     expect(channelTickerQuotes(metalPath, {group:'crypto', quotes})).toEqual([]);
+  });
+
+  it('keeps source-verified new listing prices distinct from the clearly scoped market fallback', () => {
+    expect(channelTickerPath('newStocksNews', null)).toBe(NEW_LISTINGS_TICKER);
+    expect(channelTickerQuotes(NEW_LISTINGS_TICKER, { success: true, topic: 'new-stocks',
+      tickerItems: [] })).toEqual([]);
+    const marketQuote = { symbol: 'AAPL', price: 192, currency: 'USD', source: 'Observed provider',
+      name: 'Apple', nameAr: 'Apple', exchange: 'NASDAQ', changePercent: 1, observedAt: '2026-11-20T19:00:00Z' };
+    expect(channelTickerQuotes(NEW_LISTINGS_MARKET_FALLBACK, {
+      group: 'us', quotes: [marketQuote],
+    })).toEqual([marketQuote]);
+    expect(channelTickerQuotes(NEW_LISTINGS_MARKET_FALLBACK, {
+      group: 'crypto', quotes: [marketQuote],
+    })).toEqual([]);
   });
 
   it('keeps packaged category price access read-only', () => {
