@@ -126,6 +126,56 @@ test('phone app entry shows the whole verified news feed in a separate moving st
   await expect(publisher).toHaveURL(stories[0].url);
 });
 
+test('new listings news shows a labelled US stock strip when verified new-listing prices are unavailable', async ({ page }) => {
+  await fixtures(page);
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.addInitScript(() => localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ language: 'ar' })));
+  await page.route('**/api/market/special-news?topic=new-stocks**', route => {
+    const ticker = new URL(route.request().url()).searchParams.get('part') === 'ticker';
+    return route.fulfill({ json: ticker
+      ? { success: true, topic: 'new-stocks', tickerItems: [], quoteStatus: 'rights-unverified' }
+      : { success: true, topic: 'new-stocks', items: [{
+          id: 'news-1', title: 'أخبار طرح جديد', source: 'QA news', url: 'https://example.com/new-issue',
+          publishedAt: new Date().toISOString(),
+        }], lastSuccessfulUpdate: new Date().toISOString() } });
+  });
+  await page.goto('/tv');
+  await closeTvMenu(page);
+  await chooseTvBroadcast(page, 'newStocksNews');
+  const strip = page.locator('.tv-quote-marquee');
+  await expect(strip).toBeVisible();
+  await expect(strip.locator('.tv-marquee-caption')).toHaveText('أسعار السوق الأمريكي · ليست إدراجات جديدة');
+  await expect(strip.locator('.tv-marquee-set').first()).toContainText('QA0');
+  await expect(page.locator('.tv-channel-ticker-status')).toHaveCount(0);
+  await expect(strip.locator('.tv-marquee-track')).toHaveCSS('animation-play-state', 'running');
+});
+
+test('new listings news prefers verified newly-listed quotes over market-wide fallback', async ({ page }) => {
+  await fixtures(page);
+  await page.addInitScript(() => localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ language: 'en' })));
+  const fetched: string[] = [];
+  page.on('request', request => { if (request.url().includes('/api/tv/snapshot?group=us&market=US&pageSize=12')) fetched.push(request.url()); });
+  await page.route('**/api/market/special-news?topic=new-stocks**', route => {
+    const ticker = new URL(route.request().url()).searchParams.get('part') === 'ticker';
+    return route.fulfill({ json: ticker
+      ? { success: true, topic: 'new-stocks', tickerItems: [{
+          symbol: 'LISTED', name: 'Verified new issuer', price: 14.50, changePercent: 1.2,
+          currency: 'USD', source: 'QA licensed quote', available: true, asOf: new Date().toISOString(),
+        }] }
+      : { success: true, topic: 'new-stocks', items: [{
+          id: 'news-1', title: 'Verified issuer', source: 'QA news', url: 'https://example.com/verified',
+          publishedAt: new Date().toISOString(),
+        }], lastSuccessfulUpdate: new Date().toISOString() } });
+  });
+  await page.goto('/tv');
+  await closeTvMenu(page);
+  await chooseTvBroadcast(page, 'newStocksNews');
+  const strip = page.locator('.tv-quote-marquee');
+  await expect(strip.locator('.tv-marquee-set').first()).toContainText('LISTED');
+  await expect(strip.locator('.tv-marquee-caption')).toHaveCount(0);
+  expect(fetched).toHaveLength(0);
+});
+
 test('portrait market strips move through one whole quote set per cycle', async ({ page }) => {
   await fixtures(page);
   await page.setViewportSize({ width: 430, height: 820 });
