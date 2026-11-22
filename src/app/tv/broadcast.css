@@ -54,3 +54,85 @@
 }
 
 .tv-screen .tv-scene-table .tv-scene-table-head,.tv-screen .tv-scene-table .tv-scene-row { grid-template-columns:minmax(0,1.1fr) minmax(0,.85fr) minmax(0,.75fr) minmax(0,1.6fr); }
+/* Mobile receivers must not inherit the desktop four-track override above.
+   Split each quote into three intentional bands so prices and 24h movement
+   never paint over one another on narrow iPhone/Android WebViews. */
+@media (max-width: 760px) {
+  .tv-screen .tv-scene-table .tv-scene-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, .82fr);
+    grid-template-areas:
+      "identity identity"
+      "price change"
+      "evidence evidence";
+    gap: .4em .65em;
+    padding: .7em .55em;
+    min-width: 0;
+  }
+  .tv-screen .tv-scene-table .tv-scene-row > .tv-scene-identity {
+    grid-area: identity;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .tv-screen .tv-scene-table .tv-scene-row > .tv-scene-price {
+    grid-area: price;
+    min-width: 0;
+    max-width: 100%;
+    align-items: flex-start;
+    justify-self: start;
+    text-align: start;
+  }
+  .tv-screen .tv-scene-table .tv-scene-row > .tv-scene-price strong {
+    max-width: 100%;
+    font-size: clamp(14px, 4.15vw, 21px);
+    line-height: 1.2;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .tv-screen .tv-scene-table .tv-scene-row > .tv-scene-change {
+    grid-area: change;
+    min-width: 0;
+    max-width: 100%;
+    justify-self: end;
+    align-items: flex-end;
+    text-align: end;
+    font-size: clamp(14px, 3.8vw, 19px);
+  }
+  .tv-screen .tv-scene-table .tv-scene-row > .tv-scene-change > span {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .tv-screen .tv-scene-table .tv-scene-row > .tv-evidence-stacked {
+    grid-area: evidence;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: .25em .65em;
+    min-width: 0;
+    max-width: 100%;
+    text-align: start;
+    font-size: clamp(12px, 3vw, 14px);
+  }
+  .tv-screen .tv-scene-table .tv-scene-row > .tv-evidence-stacked .tv-evidence-origin {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: .2em .45em;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .tv-screen .tv-scene-table .tv-scene-row > .tv-evidence-stacked .tv-scene-source {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .tv-screen .tv-scene-table .tv-scene-row > .tv-evidence-stacked time {
+    flex: 0 0 auto;
+    max-width: 100%;
+    white-space: normal;
+  }
+  .tv-screen .tv-scene-table .tv-scene-row[data-priced=false] > .tv-evidence-stacked {
+    grid-area: evidence;
+  }
+}
