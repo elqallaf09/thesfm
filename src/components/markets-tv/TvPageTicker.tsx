@@ -39,7 +39,7 @@ export function TvPageTicker({ quotes, path, fallbackData, loading = false, sele
   // independent US market prices as *not* verified newly listed securities.
   const needsFallback = Boolean(
     playback?.enabled && !quotes && path === NEW_LISTINGS_TICKER
-    && !loading && !remote.loading && !primary.some(tvSceneHasPrice),
+    && !remote.loading && !primary.some(tvSceneHasPrice),
   );
   const market = useTvResource<unknown>(
     needsFallback ? NEW_LISTINGS_MARKET_FALLBACK : null, 60000, '', playback?.revision,
