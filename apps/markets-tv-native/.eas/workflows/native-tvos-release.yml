@@ -1,0 +1,89 @@
+name: SFM native Apple TV latest TestFlight
+on:
+  push:
+    branches: ['publish/sfm-tv-native-latest-20261122']
+  workflow_dispatch: {}
+defaults:
+  tools:
+    node: '22.13.0'
+    pnpm: '11.1.3'
+jobs:
+  tvos:
+    name: Build the signed Apple TV app
+    type: build
+    params:
+      platform: ios
+      profile: production
+  upload:
+    name: Upload the Apple TV build to TestFlight
+    needs: [tvos]
+    type: submit
+    params:
+      build_id: ${{ needs.tvos.outputs.build_id }}
+      profile: production
+      groups: ['TV Internal']
+  verify:
+    name: Verify the exact Apple TV beta is active
+    needs: [tvos, upload]
+    runs_on: linux-medium
+    environment: production
+    env:
+      EXPO_TV: '1'
+      SFM_TV_BUILD_ID: ${{ needs.tvos.outputs.build_id }}
+      SFM_TV_BUILD_NUMBER: ${{ needs.tvos.outputs.app_build_version }}
+      SFM_TV_APP_VERSION: ${{ needs.tvos.outputs.app_version }}
+      SFM_TV_BUNDLE: ${{ needs.tvos.outputs.app_identifier }}
+      SFM_TV_SIMULATOR: ${{ needs.tvos.outputs.simulator }}
+      SFM_TV_DISTRIBUTION: ${{ needs.tvos.outputs.distribution }}
+    steps:
+      - uses: eas/checkout
+      - name: Read the selected project and Apple beta
+        run: |
+          set -euo pipefail
+          if [ -f apps/markets-tv-native/eas.json ]; then cd apps/markets-tv-native; fi
+          test -f eas.json
+          pnpm install --frozen-lockfile
+          pnpm exec expo config --json > /tmp/sfm-tvos-config.json
+          node <<'NODE'
+          const fs = require('node:fs');
+          const assert = require('node:assert/strict');
+          const c = JSON.parse(fs.readFileSync('/tmp/sfm-tvos-config.json', 'utf8'));
+          const e = JSON.parse(fs.readFileSync('eas.json', 'utf8'));
+          assert.equal(c.extra.eas.projectId, '7ee7b69f-d967-42e9-b259-916469ab7f84');
+          assert.equal(c.ios.bundleIdentifier, 'com.thesfm.marketstv.native');
+          assert.equal(process.env.SFM_TV_BUNDLE, c.ios.bundleIdentifier);
+          assert.equal(process.env.SFM_TV_APP_VERSION, c.version);
+          assert.equal(process.env.SFM_TV_BUILD_NUMBER, String(c.ios.buildNumber));
+          assert.equal(e.cli.appVersionSource, 'local');
+          assert.equal(String(e.submit.production.ios.ascAppId), '6832194114');
+          assert.equal(process.env.SFM_TV_SIMULATOR, 'false');
+          assert.equal(process.env.SFM_TV_DISTRIBUTION, 'store');
+          assert.ok(process.env.SFM_TV_BUILD_ID);
+          NODE
+          for attempt in $(seq 1 20); do
+            pnpm dlx eas-cli@27.11.0 submit:status --platform ios --profile production --non-interactive --json > /tmp/sfm-tvos-apple-state.json
+            if node <<'NODE'
+          const fs = require('node:fs');
+          const {ios} = JSON.parse(fs.readFileSync('/tmp/sfm-tvos-apple-state.json', 'utf8'));
+          if (String(ios?.ascAppIdentifier) !== '6832194114') throw Error('Unexpected Apple TV app');
+          const b = ios.testFlightBuilds?.find(b =>
+            b.appVersion === process.env.SFM_TV_APP_VERSION &&
+            String(b.buildNumber) === process.env.SFM_TV_BUILD_NUMBER &&
+            b.easBuildId === process.env.SFM_TV_BUILD_ID && !b.expired);
+          if (!b) { console.log('Exact Apple TV build not available yet'); process.exit(1); }
+          console.log('SFM Apple TV', b.appVersion, b.buildNumber, b.processingState, b.internalState);
+          process.exit(b.processingState === 'VALID' && b.internalState === 'IN_BETA_TESTING' ? 0 : 1);
+          NODE
+            then exit 0; fi
+            if [ "$attempt" -lt 20 ]; then sleep 45; fi
+          done
+          exit 1
+  receipt:
+    name: Apple TV signed build receipt
+    needs: [tvos]
+    type: doc
+    params:
+      md: |
+        Native Apple TV ${{ needs.tvos.outputs.app_version }} (${{ needs.tvos.outputs.app_build_version }})
+        [Signed build](https://expo.dev/accounts/elqallaf09/projects/sfm-markets-tv-native/builds/${{ needs.tvos.outputs.build_id }})
+        App Store Connect 6832194114. Public App Store review is separate.
