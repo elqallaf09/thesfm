@@ -21,7 +21,8 @@ jobs:
     params:
       build_id: ${{ needs.tvos.outputs.build_id }}
       profile: production
-      groups: ['TV Internal']
+      # Existing group ID: 50658b88-55aa-4f2c-8497-799f41ad1050.
+      groups: ['SFM TV Internal']
   verify:
     name: Verify the exact Apple TV beta is active
     needs: [tvos, upload]
@@ -86,4 +87,5 @@ jobs:
       md: |
         Native Apple TV ${{ needs.tvos.outputs.app_version }} (${{ needs.tvos.outputs.app_build_version }})
         [Signed build](https://expo.dev/accounts/elqallaf09/projects/sfm-markets-tv-native/builds/${{ needs.tvos.outputs.build_id }})
+        Existing internal group: SFM TV Internal (50658b88-55aa-4f2c-8497-799f41ad1050).
         App Store Connect 6832194114. Public App Store review is separate.
