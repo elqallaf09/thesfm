@@ -49,7 +49,9 @@ export async function openTvHeaderActions(page: Page) {
   const tools = page.locator('#tv-tools-dialog');
   if (!await tools.isVisible()) {
     await openTvMenu(page);
-    await page.locator('[data-tv-focus-key="more"]').click();
+    await page.locator('[data-tv-focus-key="settings"]').click();
+    await page.locator('[data-tv-focus-key="settings-tab-display"]').click();
+    await page.locator('[data-tv-focus-key="settings-tools"]').click();
   }
   await expect(tools).toBeVisible();
   return tools;
