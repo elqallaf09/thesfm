@@ -67,13 +67,13 @@ test('all six bundled wallpapers render, apply, survive reload and restore the o
   }
   await openTvMenu(page);
   await key(page, 'settings').click();
-    await key(page, 'settings-wallpapers').click();
+  await key(page, 'settings-wallpapers').click();
   await key(page, 'wallpaper:kuwait-bay').click();
   await page.reload();
   await expect(root).toHaveAttribute('data-tv-wallpaper', 'kuwait-bay');
   await openTvMenu(page);
   await key(page, 'settings').click();
-    await key(page, 'settings-wallpapers').click();
+  await key(page, 'settings-wallpapers').click();
   await expect(key(page, 'wallpaper:kuwait-bay')).toHaveAttribute('aria-pressed', 'true');
   await page.keyboard.press('Escape');
   await expect(root).toHaveAttribute('data-tv-wallpaper', 'kuwait-bay');
