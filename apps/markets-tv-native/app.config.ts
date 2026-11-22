@@ -6,7 +6,7 @@ const config: ExpoConfig = {
   owner: 'elqallaf09',
   orientation: 'landscape',
   platforms: ['ios', 'android'], icon: './assets/icon.png',
-  ios: { bundleIdentifier: 'com.thesfm.marketstv.native', buildNumber: '5', supportsTablet: false, infoPlist: { ITSAppUsesNonExemptEncryption: false } },
+  ios: { bundleIdentifier: 'com.thesfm.marketstv.native', buildNumber: '6', supportsTablet: false, infoPlist: { ITSAppUsesNonExemptEncryption: false } },
   android: { package: 'com.thesfm.marketstv.tvnative', versionCode: 5, allowBackup: false,
     permissions: ['INTERNET', 'ACCESS_NETWORK_STATE'],
     blockedPermissions: ['android.permission.READ_EXTERNAL_STORAGE', 'android.permission.WRITE_EXTERNAL_STORAGE', 'android.permission.VIBRATE', 'android.permission.SYSTEM_ALERT_WINDOW'] },
