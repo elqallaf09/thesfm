@@ -4,6 +4,42 @@ import { EVIDENCE_VERSION } from './evidenceValidation';
 import type { FinancialValue, SecurityIdentity, SourceDocument } from './types';
 
 export type PdfEvidencePage = { num: number; text: string };
+const FRONT_MATTER_PAGES = 20;
+const SELECTED_PAGE_LIMIT = 32;
+const LOCATED_PAGE_LIMIT = 12;
+const RETURNED_TEXT_LIMIT = 600_000;
+// Only paid on documents that would otherwise fail outright, so it may be
+// looser than the limit on the pages actually handed to the parser.
+const SCAN_TEXT_LIMIT = 2_000_000;
+/** Pages that carry the issue authorisation or review report a statement row is
+ * dated by. Kept in step with the signature patterns in financialValuesFromPdfPages. */
+const STATEMENT_SIGNATURE = /authori[sz]ed for issue|approved (?:these )?consolidated financial statements for issue|INDEPENDENT AUDITORS|REPORT ON REVIEW OF INTERIM/i;
+
+/** The reviewed page window plus the front matter that proves issuer identity. */
+export function hintedEvidencePages(total: number, hints: number[] = []) {
+  return [...new Set([...hints, ...Array.from({ length: Math.min(FRONT_MATTER_PAGES, total) }, (_, index) => index + 1)])]
+    .filter(page => Number.isInteger(page) && page >= 1 && page <= total)
+    .slice(0, SELECTED_PAGE_LIMIT).sort((left, right) => left - right);
+}
+
+/** Pages of an already-extracted document that actually carry a consolidated
+ * statement header or its signature. A reviewed window is a hint, not a
+ * guarantee: an issuer can re-paginate a report and keep publishing it at the
+ * same URL, which is how KFH's statements moved out of their configured window
+ * and turned one readable filing into a standing unsupported-layout failure. */
+export function locatedEvidencePages(pages: PdfEvidencePage[]) {
+  return pages.filter(page => statementHeader(page.text) || STATEMENT_SIGNATURE.test(page.text))
+    .map(page => page.num).slice(0, LOCATED_PAGE_LIMIT);
+}
+
+/** Located statement pages are never dropped by the cap; hints only fill what
+ * is left, because front matter cannot carry a statement row. */
+export function evidencePageSelection(total: number, hints: number[], located: number[]) {
+  return [...new Set([...located, ...hintedEvidencePages(total, hints)])]
+    .filter(page => Number.isInteger(page) && page >= 1 && page <= total)
+    .slice(0, SELECTED_PAGE_LIMIT).sort((left, right) => left - right);
+}
+
 export async function extractSelectedPdfPages(body: Uint8Array, hints: number[] = []): Promise<PdfEvidencePage[]> {
   if (body.byteLength > 15 * 1024 * 1024) throw new Error('pdf_size_limit');
   const { CanvasFactory } = await import('pdf-parse/worker');
@@ -13,11 +49,23 @@ export async function extractSelectedPdfPages(body: Uint8Array, hints: number[] 
     const info = await parser.getInfo({ parsePageInfo: false });
     const total = Number(info.total);
     if (!Number.isInteger(total) || total < 1 || total > 400) throw new Error('pdf_page_limit');
-    const selected = [...new Set([...hints, ...Array.from({ length: Math.min(20, total) }, (_, i) => i + 1)])]
-      .filter(page => Number.isInteger(page) && page >= 1 && page <= total).slice(0, 32).sort((a, b) => a - b);
-    const result = await parser.getText({ partial: selected });
-    const pages = result.pages.map(page => ({ num: page.num, text: page.text }));
-    if (pages.reduce((n, page) => n + page.text.length, 0) > 600_000) throw new Error('pdf_text_limit');
+    const read = async (selection: number[], limit: number) => {
+      const result = await parser.getText({ partial: selection });
+      const pages = result.pages.map(page => ({ num: page.num, text: page.text }));
+      if (pages.reduce((length, page) => length + page.text.length, 0) > limit) throw new Error('pdf_text_limit');
+      return pages;
+    };
+    const reviewed = await read(hintedEvidencePages(total, hints), RETURNED_TEXT_LIMIT);
+    if (reviewed.some(page => statementHeader(page.text))) return reviewed;
+    // The reviewed window holds no statement header at all, so this document was
+    // re-paginated after review. Read it once and keep the pages that do, rather
+    // than reporting a readable official filing as an unsupported layout.
+    const scanned = await read(Array.from({ length: total }, (_, index) => index + 1), SCAN_TEXT_LIMIT);
+    const located = locatedEvidencePages(scanned);
+    if (!located.length) return reviewed;
+    const selection = new Set(evidencePageSelection(total, hints, located));
+    const pages = scanned.filter(page => selection.has(page.num));
+    if (pages.reduce((length, page) => length + page.text.length, 0) > RETURNED_TEXT_LIMIT) throw new Error('pdf_text_limit');
     return pages;
   } finally { await parser.destroy(); }
 }
