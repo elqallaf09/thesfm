@@ -14,7 +14,12 @@ const profiles: Profile[] = [
     // This is a reviewed official exchange fallback, not a search-engine mirror.
     alternates: [{ url: 'https://ifsahdocs.boursakuwait.com.kw/DiscAssets/2026_17431/NBK%20FS%2030%20Jun%202026%20EN.pdf' }] },
   { symbols: ['KFH', 'KFH.KW'], country: 'KW', name: /Kuwait Finance House/i, directory: 'https://www.kfh.com/en/home/Investor-Relations/Annual-Reports/Annual-Reports.html',
-    document: 'https://www.kfh.com/en/reports/kuwait/Annual-Reports/Annual-Report-2025/document_en/KFH%20Annual%20Report%20En%202025%20(Draft-17)%20Web.pdf.pdf', pages: [83, 84, 85, 86, 87, 88, 89, 90, 91, 92] },
+    // No reviewed page window: KFH republished this annual report at the same URL
+    // with different pagination, so the previous pages 83-92 now land in the
+    // corporate governance section and carried no statement rows. The statements
+    // are located by header instead; pin a window again only after confirming it
+    // against the published file.
+    document: 'https://www.kfh.com/en/reports/kuwait/Annual-Reports/Annual-Report-2025/document_en/KFH%20Annual%20Report%20En%202025%20(Draft-17)%20Web.pdf.pdf' },
   { symbols: ['BOUBYAN', 'BOUBYAN.KW'], country: 'KW', name: /Boubyan Bank/i, directory: 'https://www.bankboubyan.com/en/investor-relations', document: 'https://www.bankboubyan.com/media/filer_public/60/37/6037dab5-8d89-4ec5-93eb-cc87d58cf16e/english_-_boubyan_bank_e_30_june_2026.pdf' },
   { symbols: ['IFA', 'IFA.KW'], country: 'KW', name: /International Financial Advis[oe]rs/i, directory: 'https://www.ifakuwait.com/financial-statements.html',
     // The official 2025 annual report has verified text-bearing auditor and
