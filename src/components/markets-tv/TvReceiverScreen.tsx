@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Pause, Play, RefreshCw } from 'lucide-react'
 import type { TvLanguage, TvMarket, TvNews, TvQuote, TvSnapshot } from '@/lib/markets-tv/types';
 import type { TvReceiverChannel } from '@/lib/markets-tv/receiver';
 import { TvPageTicker } from './TvPageTicker';
+import { TvNewsMovers } from './TvNewsMovers';
 import { TvReceiverNews } from './TvReceiverNews';
 import { receiverText } from '@/lib/markets-tv/receiver';
 import { TV_BROADCAST_PAGE_MS } from '@/lib/markets-tv/broadcast';
@@ -79,6 +80,7 @@ export default function TvReceiverScreen({ channel, language, now, revision, pla
       </section>
       {channel === 'kuwait' && <TvReceiverNews language={language} channel={channel} now={now} revision={revision} onStory={onStory} onRefresh={onRefresh} playing={playing}/>}
     </div>}
+    {channel === 'kuwait' && <TvNewsMovers channel="kuwait" language={language} revision={revision}/>}
     {!newsOnly && <TvPageTicker quotes={quotes} loading={snapshot.loading}/>}
   </main>;
 }
