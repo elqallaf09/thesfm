@@ -2,7 +2,7 @@ import 'server-only';
 import { mapWithConcurrency } from '@/lib/server/mapWithConcurrency';
 import type { TechStockPrice } from '@/lib/market/fetchStockPrices';
 
-export type SpecialQuote = TechStockPrice & { name?: string; currency?: string; assetType?: string; exchange?: string };
+export type SpecialQuote = TechStockPrice & { name?: string; currency?: string; assetType?: string; exchange?: string; volume?: number | null };
 const cache = new Map<string, { quote: SpecialQuote; expires: number }>();
 const pending = new Map<string, Promise<SpecialQuote>>();
 
@@ -41,6 +41,7 @@ async function fetchQuote(symbol: string): Promise<SpecialQuote> {
         asOf: time && time > 0 ? new Date(time * 1000).toISOString() : null,
         name: meta.longName || meta.shortName || symbol, currency: meta.currency,
         assetType: meta.instrumentType, exchange: meta.exchangeName,
+        volume: numeric(meta.regularMarketVolume),
       };
     }
   } catch { /* Fall through to the configured provider within the same budget. */ }
