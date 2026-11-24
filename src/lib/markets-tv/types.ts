@@ -20,7 +20,7 @@ export type TvSettings = {
 };
 export type TvQuote = {
   symbol: string; listingKey?: string; displaySymbol?: string; name: string; nameAr: string; currency: string | null; price: number | null;
-  changePercent: number | null; source: string | null; observedAt: string | null; receivedAt: string | null;
+  changePercent: number | null; volume?: number | null; source: string | null; observedAt: string | null; receivedAt: string | null;
   status: 'available' | 'delayed' | 'closed' | 'stale' | 'reference' | 'unknown_time' | 'unknown_delay' | 'unavailable';
   exchange: string | null; country: string | null;
   observation?: import('@/lib/market/quoteObservation').QuoteObservation;
