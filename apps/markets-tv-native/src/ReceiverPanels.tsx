@@ -16,6 +16,7 @@ import { TvButton } from './TvControls';
 import { GLOBAL_INDEX_TICKER, channelTickerPath } from '../../../src/lib/markets-tv/channelTicker';
 import { NativeTicker } from './NativeTicker';
 import { NewsPhoto } from './NewsPhoto';
+import { NativeNewsMovers } from './NativeNewsMovers';
 
 export function Pages({ page, pages, change }: { page: number; pages: number; change: (page: number) => void }) {
   const { language, row } = usePresentation();
@@ -44,6 +45,7 @@ export function NewsPanel({ channel, page, changePage, revision }: { channel: Tv
     </Panel>)}</View>
     {data && !data.stories.length && <Label>{t(language, 'noData')}</Label>}
     <Pages page={current} pages={pages} change={changePage}/>
+    <NativeNewsMovers channel={channel} tickerPath={data?.tickerPath ?? channelTickerPath(channel, null)} revision={revision}/>
     <NativeTicker path={channel === 'kuwait' ? '/api/tv/snapshot?group=gulf&market=BOURSA_KUWAIT&pageSize=6' : data?.tickerPath ?? channelTickerPath(channel, null)} revision={revision}/>
   </View>;
 }
