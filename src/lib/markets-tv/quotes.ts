@@ -14,6 +14,7 @@ export function toTvQuote(symbol: string, row: SfmMarketQuote | null, nameAr?: s
     symbol, name: row?.name || symbol, nameAr: nameAr || row?.name || symbol,
     price: valid ? row!.price : null, currency: valid ? row!.currency : null,
     changePercent: valid && typeof row?.changePercent === 'number' && Number.isFinite(row.changePercent) ? row.changePercent : null,
+    volume: valid && row?.assetType === 'stock' && typeof row.volume === 'number' && Number.isFinite(row.volume) && row.volume >= 0 ? row.volume : null,
     source: evidence?.upstreamProviderName || evidence?.upstreamProvider || null,
     observedAt: evidence?.observation?.precision === 'unknown' ? null : evidence?.observedAt || null,
     receivedAt: evidence?.receivedAt || null, exchange: row?.exchange || null, country: row?.country || null,
