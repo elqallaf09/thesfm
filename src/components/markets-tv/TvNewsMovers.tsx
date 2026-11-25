@@ -16,7 +16,7 @@ export function TvNewsMovers({ channel, language, revision, tickerPath = null, s
   const data = useMemo(() => parseNewsMovers(resource.data, channel), [resource.data, channel]);
   const hasMovers = Boolean(data && NEWS_MOVER_KEYS.some(key => data.lists[key].length));
   useEffect(() => { onAvailable?.(hasMovers); }, [hasMovers, onAvailable]);
-  return <section className="tv-news-movers" data-movers-channel={channel} data-expanded={expanded}
+  return <section id="tv-news-movers-board" className="tv-news-movers" data-movers-channel={channel} data-expanded={expanded}
     hidden={separate && !expanded} aria-label={newsMoverText(language,'movers')} aria-busy={resource.loading}>
     <div className="tv-news-movers-grid">
       {NEWS_MOVER_KEYS.map(key => <section key={key} className="tv-news-mover-card" data-mover-kind={key}>
@@ -24,7 +24,7 @@ export function TvNewsMovers({ channel, language, revision, tickerPath = null, s
         {data?.lists[key].length ? <ol>{data.lists[key].map(item => <li key={item.symbol+':'+item.exchange+':'+item.currency}>
           <TvAssetIcon quote={{symbol:item.symbol,name:item.name,exchange:item.exchange || null}}
             group={channel==='cryptoNews'?'crypto':undefined}/>
-          <span className="tv-news-mover-identity"><strong>{item.name}</strong><bdi>{item.symbol}</bdi></span>
+          <span className="tv-news-mover-identity"><strong dir="auto" title={item.name}>{item.name}</strong><bdi>{item.symbol}</bdi></span>
           <span className="tv-news-mover-metric" data-direction={item.changePercent === null ? 'flat' : item.changePercent>0?'up':item.changePercent<0?'down':'flat'}>
             <bdi>{moverValue(item,key)}</bdi>
             <small><bdi>{new Intl.NumberFormat('en-US',{maximumFractionDigits:4}).format(item.price)} {item.currency}</bdi></small>
