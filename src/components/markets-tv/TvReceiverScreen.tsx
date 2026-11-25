@@ -86,7 +86,7 @@ export default function TvReceiverScreen({ channel, language, now, revision, pla
         {channel === 'allStocks' && <label>{receiverText(language, 'market')}<select value={selected} onChange={event => { setSelected(event.target.value); setCursors({}); }}>
           <option value="">{t('allMarkets')}</option>{markets.map(m => <option key={m.id} value={m.id}>{language === 'ar' ? m.labelAr : language === 'fr' ? m.labelFr : m.labelEn}</option>)}
         </select></label>}
-        {hasNews && <button type="button" className="tv-news-movers-toggle" data-tv-focus-key="news-movers-toggle" aria-pressed={moversExpanded} onClick={() => setMoversExpanded(value => !value)}>{newsMoverText(language, moversExpanded ? 'backToNews' : 'movers')}</button>}
+        {hasNews && <button type="button" className="tv-news-movers-toggle" data-tv-focus-key="news-movers-toggle" aria-expanded={moversExpanded} aria-controls="tv-news-movers-board" onClick={() => setMoversExpanded(value => !value)}>{newsMoverText(language, moversExpanded ? 'backToNews' : 'movers')}</button>}
         <button aria-label={t(playing ? 'pause' : 'resume')} aria-pressed={playing} onClick={togglePlay}>{playing ? <Pause aria-hidden="true"/> : <Play aria-hidden="true"/>}</button>
         <button aria-label={t('refresh')} onClick={onRefresh}><RefreshCw aria-hidden="true"/></button>
       </div>
