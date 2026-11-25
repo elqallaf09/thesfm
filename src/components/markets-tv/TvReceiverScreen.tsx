@@ -6,6 +6,7 @@ import type { TvLanguage, TvMarket, TvNews, TvQuote, TvSnapshot } from '@/lib/ma
 import type { TvReceiverChannel } from '@/lib/markets-tv/receiver';
 import { TvPageTicker } from './TvPageTicker';
 import { TvNewsMovers } from './TvNewsMovers';
+import { newsMoverText } from '@/lib/markets-tv/newsMovers';
 import { TvReceiverNews } from './TvReceiverNews';
 import { receiverText } from '@/lib/markets-tv/receiver';
 import { TV_BROADCAST_PAGE_MS } from '@/lib/markets-tv/broadcast';
@@ -30,6 +31,26 @@ export default function TvReceiverScreen({ channel, language, now, revision, pla
   const [selected, setSelected] = useState(''), [marketIndex, setMarketIndex] = useState(0);
   const [cursors, setCursors] = useState<Record<string, number>>({});
   const [pageSize, setPageSize] = useState(6);
+  const [compactNews, setCompactNews] = useState(false);
+  const [moversExpanded, setMoversExpanded] = useState(false);
+  const [moversAvailable, setMoversAvailable] = useState(false);
+  const separateMovers = channel === 'kuwait' || compactNews;
+  const hasNews = newsOnly || channel === 'kuwait';
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 1200px), (max-height: 900px)');
+    const fit = () => setCompactNews(query.matches);
+    fit(); query.addListener(fit); return () => query.removeListener(fit);
+  }, []);
+  useEffect(() => {
+    if (!hasNews || !separateMovers || !playing || !moversAvailable) return;
+    const timer = setInterval(() => {
+      if (document.hidden || document.querySelector('[data-tv-dialog]')) return;
+      const focus = document.activeElement;
+      if (focus?.closest('.tv-receiver-content, .tv-receiver-news-body, [data-tv-focus-key="news-movers-toggle"]')) return;
+      setMoversExpanded(value => !value);
+    }, TV_BROADCAST_PAGE_MS);
+    return () => clearInterval(timer);
+  }, [hasNews, separateMovers, playing, moversAvailable]);
   useEffect(() => {
     const query = window.matchMedia('(min-width: 761px) and (max-height: 650px)');
     const fit = () => { setPageSize(query.matches ? 4 : 6); setCursors({}); };
@@ -51,10 +72,10 @@ export default function TvReceiverScreen({ channel, language, now, revision, pla
     if (channel === 'allStocks' && !selected) setMarketIndex(value => (value + direction + markets.length) % Math.max(1, markets.length));
   }, [market, pages, channel, selected, markets.length]);
   useEffect(() => {
-    if (!playing || snapshot.error || sourceCooling || newsOnly || !market || (pages < 2 && (selected || markets.length < 2))) return;
+    if (!playing || moversExpanded || snapshot.error || sourceCooling || newsOnly || !market || (pages < 2 && (selected || markets.length < 2))) return;
     const timer = setInterval(() => { if (!document.hidden) step(1); }, TV_BROADCAST_PAGE_MS);
     return () => clearInterval(timer);
-  }, [playing, snapshot.error, sourceCooling, newsOnly, market, pages, selected, markets.length, step]);
+  }, [playing, moversExpanded, snapshot.error, sourceCooling, newsOnly, market, pages, selected, markets.length, step]);
   const t = (key: Parameters<typeof tvText>[1]) => tvText(language, key);
   const label = market ? language === 'ar' ? market.labelAr : language === 'fr' ? market.labelFr : market.labelEn : '—';
   const quotes = snapshot.data?.quotes || [];
@@ -65,11 +86,12 @@ export default function TvReceiverScreen({ channel, language, now, revision, pla
         {channel === 'allStocks' && <label>{receiverText(language, 'market')}<select value={selected} onChange={event => { setSelected(event.target.value); setCursors({}); }}>
           <option value="">{t('allMarkets')}</option>{markets.map(m => <option key={m.id} value={m.id}>{language === 'ar' ? m.labelAr : language === 'fr' ? m.labelFr : m.labelEn}</option>)}
         </select></label>}
+        {hasNews && <button type="button" className="tv-news-movers-toggle" data-tv-focus-key="news-movers-toggle" aria-pressed={moversExpanded} onClick={() => setMoversExpanded(value => !value)}>{newsMoverText(language, moversExpanded ? 'backToNews' : 'movers')}</button>}
         <button aria-label={t(playing ? 'pause' : 'resume')} aria-pressed={playing} onClick={togglePlay}>{playing ? <Pause aria-hidden="true"/> : <Play aria-hidden="true"/>}</button>
         <button aria-label={t('refresh')} onClick={onRefresh}><RefreshCw aria-hidden="true"/></button>
       </div>
     </header>
-    {newsOnly ? <TvReceiverNews language={language} channel={channel} now={now} revision={revision} onStory={onStory} onRefresh={onRefresh} playing={playing} onPaginationAvailable={onPaginationAvailable}/> : <div className="tv-receiver-content">
+    {newsOnly ? <TvReceiverNews language={language} channel={channel} now={now} revision={revision} onStory={onStory} onRefresh={onRefresh} playing={playing && !moversExpanded} onPaginationAvailable={onPaginationAvailable} separateMovers={separateMovers} moversExpanded={moversExpanded} onMoversAvailable={setMoversAvailable}/> : <div className="tv-receiver-content" hidden={moversExpanded}>
       <section className="tv-receiver-market" aria-busy={snapshot.loading || catalog.loading}>
         <header><h2>{label}</h2><span>{t('coverage')}: <bdi>{snapshot.data ? `${snapshot.data.available} / ${snapshot.data.total}` : '—'}</bdi></span>
           <div><button aria-label={t('previous')} onClick={() => step(-1)} disabled={!market}><ChevronLeft aria-hidden="true"/></button><bdi>{page + 1} / {pages}</bdi><button aria-label={t('next')} onClick={() => step(1)} disabled={!market}><ChevronRight aria-hidden="true"/></button></div>
@@ -80,7 +102,7 @@ export default function TvReceiverScreen({ channel, language, now, revision, pla
       </section>
       {channel === 'kuwait' && <TvReceiverNews language={language} channel={channel} now={now} revision={revision} onStory={onStory} onRefresh={onRefresh} playing={playing}/>}
     </div>}
-    {channel === 'kuwait' && <TvNewsMovers channel="kuwait" language={language} revision={revision}/>}
+    {channel === 'kuwait' && <TvNewsMovers channel="kuwait" language={language} revision={revision} separate expanded={moversExpanded} onAvailable={setMoversAvailable}/>}
     {!newsOnly && <TvPageTicker quotes={quotes} loading={snapshot.loading}/>}
   </main>;
 }
