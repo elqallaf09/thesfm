@@ -23,7 +23,7 @@
 .tv-screen .tv-news-movers[hidden]{display:none}
 .tv-receiver-news-body{display:flex;flex:1;min-width:0;min-height:0;flex-direction:column}
 .tv-screen .tv-receiver-actions .tv-news-movers-toggle{font-size:max(13px,.78em);white-space:nowrap;padding-inline:.55em}
-.tv-screen .tv-news-movers-toggle[aria-pressed=true]{border-color:var(--tv-accent);color:var(--tv-accent)}
+.tv-screen .tv-news-movers-toggle[aria-expanded=true]{border-color:var(--tv-accent);color:var(--tv-accent)}
 .tv-news-movers[data-expanded=true]{flex:1;min-height:0;justify-content:center;margin-block:0}
 .tv-news-movers[data-expanded=true] .tv-news-movers-grid{flex:1;min-height:0;align-content:stretch;grid-auto-rows:minmax(0,1fr)}
 .tv-news-movers[data-expanded=true] .tv-news-mover-card{padding:.65em .75em;gap:.3em}
