@@ -55,6 +55,8 @@ export function parseNewsMovers(value: unknown, channel: TvReceiverNewsChannel):
     source: typeof body.source === 'string' ? body.source : null };
 }
 const COPY = {
+  movers: ['حركة السوق','Market movers','Mouvements du marché'],
+  backToNews: ['عرض الأخبار','Show news','Afficher les actualités'],
   gainers: ['أعلى 5 ارتفاعاً','Top 5 gainers','5 plus fortes hausses'],
   losers: ['أعلى 5 انخفاضاً','Top 5 losers','5 plus fortes baisses'],
   mostTraded: ['أكثر 5 تداولاً','5 most traded','5 volumes les plus élevés'],
