@@ -1,5 +1,5 @@
 import { openTvMenu, closeTvMenu, openTvHeaderActions, closeTvHeaderActions, chooseTvDestination, selectTvProfile } from './helpers/tv-controls';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => sessionStorage.setItem('sfm-tv-welcome-shown', '1'));
@@ -183,22 +183,34 @@ test('TV market selection changes the main screen and promotes its independent t
   await expect(page.locator('.tv-strips-only')).toBeVisible();
 });
 
-test('strips page fills the viewport, browses all rows and omits dashboard requests', async ({ page }) => {
+async function mockStripWall(page: Page, marketCount: number, directoryTotal: number, language: 'ar' | 'en' = 'ar') {
   const requests: string[] = [];
-  let quotePrice = 123.45;
-  page.on('request', request => { if (request.url().includes('/api/tv/')) requests.push(request.url()); });
-  await page.addInitScript(() => { if (!localStorage.getItem('sfm-markets-tv-settings-v1')) localStorage.setItem('sfm-markets-tv-settings-v1', JSON.stringify({ ticker: false, autoRotate: true })); });
-  const markets = Array.from({ length: 30 }, (_, index) => ({ id: `QA${index}`, group: 'us', labelAr: `سوق اختبار ${index}`, labelEn: `QA market ${index}`, labelFr: `Marché test ${index}`, count: 120, status: 'directory' }));
+  const quote = { price: 123.45, observedAt: new Date(Date.now() - 2_000).toISOString() };
+  page.on('request', request => {
+    if (request.url().includes('/api/tv/')) requests.push(request.url());
+  });
+  await page.addInitScript(initialLanguage => {
+    const key = 'sfm-markets-tv-settings-v1';
+    if (!localStorage.getItem(key)) {
+      localStorage.setItem(key, JSON.stringify({ language: initialLanguage, ticker: false, autoRotate: true }));
+    }
+  }, language);
+  const markets = Array.from({ length: marketCount }, (_, index) => ({ id: `QA${index}`, group: 'us', labelAr: `سوق اختبار ${index}`, labelEn: `QA market ${index}`, labelFr: `Marché test ${index}`, count: directoryTotal, status: 'directory' }));
   await page.route('**/api/tv/catalog', route => route.fulfill({ json: { markets } }));
   await page.route('**/api/tv/snapshot?*', route => {
     const params = new URL(route.request().url()).searchParams;
-    return route.fulfill({ json: { group: 'us', directoryTotal: 120, total: 1, available: 1, quotes: [{
-      symbol: `${params.get('market')}-${params.get('page')}`, name: 'Synthetic QA', nameAr: 'اختبار', price: quotePrice, currency: 'USD', changePercent: 1.2,
-      source: 'Synthetic QA fixture', observedAt: new Date().toISOString(), status: 'available', exchange: 'QA',
+    return route.fulfill({ json: { group: 'us', market: params.get('market'), generatedAt: new Date().toISOString(), directoryTotal, total: 1, available: 1, quotes: [{
+      symbol: `${params.get('market')}-${params.get('page')}`, name: 'Synthetic QA', nameAr: 'اختبار', price: quote.price, currency: 'USD', changePercent: 1.2,
+      source: 'Synthetic QA fixture', observedAt: quote.observedAt, status: 'available', exchange: 'QA',
     }] } });
   });
   await page.goto('/tv/strips');
   await closeTvMenu(page);
+  return { requests, quote };
+}
+
+test('strips page fills the viewport, browses all rows and omits dashboard requests', async ({ page }) => {
+  const { requests } = await mockStripWall(page, 30, 120);
   await expect(page.locator('.tv-market-strip')).toHaveCount(30);
   await expect(page.locator('.tv-market-strip-item').first()).toContainText('QA0-0');
   await expect(page.locator('.tv-quote-grid,.tv-news-panel,.tv-markets-nav,.tv-footer')).toHaveCount(0);
@@ -229,13 +241,17 @@ test('strips page fills the viewport, browses all rows and omits dashboard reque
   await expect(page.locator('.tv-market-strip-item').first()).toContainText('QA29-0');
   await page.locator('.tv-strip-next').first().click();
   await expect(page.locator('.tv-market-strip-item').first()).toContainText('QA29-1');
+  expect(requests.some(url => url.includes('/news'))).toBe(false);
+  expect(requests.filter(url => url.includes('/snapshot')).every(url => new URL(url).searchParams.get('pageSize') === '12')).toBe(true);
+});
+
+test('strip language and market selection survive reload and quote details keep playing', async ({ page }) => {
+  await mockStripWall(page, 30, 120);
   await openTvMenu(page);
   await page.locator('[data-tv-focus-key=settings]').click();
   await page.locator('.tv-language-options').getByRole('button', { name: 'English', exact: true }).click();
   await page.keyboard.press('Escape');
   await expect(page.locator('[data-tv-root]')).toHaveAttribute('dir', 'ltr');
-  expect(requests.some(url => url.includes('/news'))).toBe(false);
-  expect(requests.filter(url => url.includes('/snapshot')).every(url => new URL(url).searchParams.get('pageSize') === '12')).toBe(true);
   await expect(page.getByRole('img', { name: 'THE SFM', exact: true })).toBeVisible();
   await openTvMenu(page);
   await page.locator('[data-tv-focus-key=customize]').click();
@@ -257,14 +273,31 @@ test('strips page fills the viewport, browses all rows and omits dashboard reque
   await expect(page.getByRole('dialog')).toBeVisible();
   await expect(page.locator('.tv-market-strip-track').first()).toHaveCSS('animation-play-state', 'running');
   await page.keyboard.press('Escape');
-  // Opening Screen settings can trigger a scheduled quote refresh, especially on slow WebKit.
-  // Change the mocked provider price only after Screen tools opens so Refresh must observe the new tick.
+});
+
+test('strips refresh the displayed quote and support playback and exit', async ({ page }) => {
+  const { quote } = await mockStripWall(page, 1, 1, 'en');
+  const item = page.locator('[data-market="QA0"] .tv-market-strip-item').first();
+  await expect(item.locator('.tv-strip-price')).toContainText('123.45');
   await openTvHeaderActions(page);
-  await expect(page.locator('.tv-strip-price').first()).toContainText('123.45');
-  quotePrice = 124.45;
-  await page.getByRole('button', { name: 'Refresh', exact: true }).click();
-  await expect(page.locator('.tv-strip-price').first()).toContainText('124.45');
-  await expect(page.locator('.tv-market-strip-item').first()).toHaveAttribute('data-tick', 'up');
+  const refresh = page.getByRole('button', { name: 'Refresh', exact: true });
+  quote.price = 124.45;
+  quote.observedAt = new Date().toISOString();
+  await refresh.click();
+  await Promise.all([
+    expect(item.locator('.tv-strip-price')).toContainText('124.45'),
+    expect(item).toHaveAttribute('data-tick', 'up'),
+  ]);
+  // A later observation at the same price must allow the existing flash to expire.
+  quote.observedAt = new Date(Date.parse(quote.observedAt) + 1).toISOString();
+  await Promise.all([
+    page.waitForResponse(response => {
+      const url = new URL(response.url());
+      return url.pathname === '/api/tv/snapshot' && url.searchParams.get('market') === 'QA0' && response.ok();
+    }),
+    refresh.click(),
+  ]);
+  await expect(item).toHaveAttribute('data-tick', '');
   await page.getByRole('button', { name: 'Pause strips', exact: true }).click();
   await expect(page.locator('.tv-market-strip-track')).toHaveCSS('animation-play-state', 'paused');
   await page.getByRole('button', { name: 'Resume strips', exact: true }).click();
