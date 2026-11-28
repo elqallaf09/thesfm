@@ -1,6 +1,6 @@
 .tv-news-movers{flex:0 0 auto;min-width:0;display:flex;flex-direction:column;gap:.18em;margin-block:.3em;color:var(--tv-text)}
 .tv-news-movers-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.4em}
-.tv-news-mover-card{min-width:0;display:flex;flex-direction:column;padding:.35em .45em;border:1px solid var(--tv-line);border-radius:.5em;background:var(--tv-panel);overflow:hidden}
+.tv-news-mover-card{min-width:0;display:flex;flex-direction:column;padding:.35em .45em;border:1px solid var(--tv-line);border-radius:var(--radius-sm);background:var(--tv-panel);overflow:hidden}
 .tv-screen .tv-news-mover-card h2{margin:0 0 .25em;font-size:max(13px,.84em);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tv-news-mover-card ol{list-style:none;margin:0;padding:0;display:grid;grid-template-rows:repeat(5,minmax(0,1fr));gap:.1em;min-height:6em}
 .tv-news-mover-card li{display:grid;grid-template-columns:1.25em minmax(0,1fr) auto;align-items:center;gap:.3em;min-width:0;min-height:0;font-size:max(12px,.72em);line-height:1.15}
