@@ -60,7 +60,7 @@ export function listingTickerItems(listings: VerifiedListing[], quotes: Map<stri
       || typeof quote.price !== 'number' || !Number.isFinite(quote.price) || quote.price <= 0
       || !Number.isFinite(observed) || observed > now + 60_000 || observed < now - 4 * DAY || observed < day(row.firstTradeDate)) return [];
     return [{ symbol: row.symbol, name: row.name, assetType: 'stock' as const, currency: 'USD',
-      price: quote.price, changePercent: quote.changePercent, available: true, source: quote.source,
+      price: quote.price, changePercent: quote.changePercent, volume: quote.volume ?? null, available: true, source: quote.source,
       asOf: quote.asOf, delayed: quote.delayed, meta: `${row.exchange} · ${row.firstTradeDate}`,
       firstTradeDate: row.firstTradeDate, listingSourceUrl: row.sourceUrl }];
   });

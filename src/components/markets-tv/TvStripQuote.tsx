@@ -10,15 +10,20 @@ import { TvAssetIcon } from './TvAssetIcon';
 import { TvQuoteEvidence } from './TvQuoteEvidence';
 const QUOTE_TICK_MS = 5_000;
 export const TvStripQuote = memo(function TvStripQuote({ quote: q, group, language, now, duplicate, onQuote }: { quote: TvQuote; group: TvGroup; language: TvLanguage; now: number; duplicate: boolean; onQuote: (quote: TvQuote) => void }) {
-  const previous = useRef(q), [tick, setTick] = useState('');
+  const { price, observedAt } = q;
+  const previous = useRef({ price, observedAt });
+  const clearTick = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [tick, setTick] = useState('');
+  useEffect(() => () => clearTimeout(clearTick.current), []);
   useEffect(() => {
-    const old = previous.current; previous.current = q;
-    if (q.price === null || old.price === null || q.price === old.price || !q.observedAt || !old.observedAt || Date.parse(q.observedAt) <= Date.parse(old.observedAt)) return;
-    setTick(q.price > old.price ? 'up' : 'down');
-    // Keep the update visible long enough to be perceived on a television and
-    // by slower WebKit devices after the new price has painted.
-    const timer = setTimeout(() => setTick(''), QUOTE_TICK_MS); return () => clearTimeout(timer);
-  }, [q.price, q.observedAt, q]);
+    const old = previous.current;
+    previous.current = { price, observedAt };
+    if (price === null || old.price === null || price === old.price || !observedAt || !old.observedAt) return;
+    if (!(Date.parse(observedAt) > Date.parse(old.observedAt))) return;
+    clearTimeout(clearTick.current);
+    setTick(price > old.price ? 'up' : 'down');
+    clearTick.current = setTimeout(() => setTick(''), QUOTE_TICK_MS);
+  }, [price, observedAt]);
   const priced = tvSceneHasPrice(q);
   const trend = !priced || q.changePercent === null || q.changePercent === 0 ? 'flat' : q.changePercent > 0 ? 'up' : 'down';
   const status = priced ? quoteStatus(q, now) : 'unavailable';

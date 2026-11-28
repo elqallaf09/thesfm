@@ -141,3 +141,60 @@ for (const language of ['ar','en','fr']) test(`receiver ${language}: complete ca
   }
   if (language === 'ar') { await page.setViewportSize({ width: 1920, height: 1080 }); await chooseTvBroadcast(page, 'kuwait'); await page.screenshot({ path: testInfo.outputPath('receiver-kuwait.png') }); }
 });
+
+test('scoped news movers fit compact screens and preserve news and the price ticker', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await page.route('**/api/tv/news-movers?*', route => {
+    const channel = new URL(route.request().url()).searchParams.get('channel');
+    const prefix = channel === 'kuwait' ? 'KW' : 'TECH';
+    const rows = (kind: string, sign = 1) => Array.from({ length: 5 }, (_, i) => ({
+      symbol: prefix + kind + i, name: 'QA listed company ' + i, currency: channel === 'kuwait' ? 'KWD' : 'USD',
+      price: 1.25 + i, changePercent: sign * (i + 1), volume: (i + 1) * 100000,
+    }));
+    return route.fulfill({ json: { channel, lists: { gainers: rows('G'), losers: rows('L', -1), mostTraded: rows('H'), leastTraded: rows('V') },
+      source: 'QA fixture', updatedAt: '2026-11-08T07:10:00Z' } });
+  });
+  await open(page);
+  await chooseTvBroadcast(page, 'kuwait');
+  await page.setViewportSize({ width: 960, height: 540 });
+  const toggle = page.locator('[data-tv-focus-key="news-movers-toggle"]');
+  const board = page.locator('#tv-news-movers-board');
+  const headlines = page.locator('.tv-receiver-news-body');
+  await expect(headlines).toBeVisible();
+  await expect(board).toBeHidden();
+  await toggle.focus();
+  await page.keyboard.press('Enter');
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  await expect(board).toBeVisible();
+  await expect(board).toHaveAttribute('data-movers-channel', 'kuwait');
+  await expect(board.locator('.tv-news-mover-card')).toHaveCount(4);
+  await expect(board.locator('li')).toHaveCount(20);
+  await expect(board).toContainText('KWG4');
+  await expect(board).not.toContainText('TECHG4');
+  await expect(headlines).toBeHidden();
+  await expect(page.locator('.tv-receiver-screen .tv-quote-marquee')).toBeVisible();
+  await expect.poll(() => board.locator('.tv-news-mover-card, li').evaluateAll(elements => elements.flatMap(el => {
+    const bounds = el.getBoundingClientRect();
+    const parent = el.parentElement!.getBoundingClientRect();
+    return bounds.height <= 0 || bounds.left < parent.left - 2 || bounds.right > parent.right + 2
+      || bounds.top < parent.top - 2 || bounds.bottom > parent.bottom + 2
+      || el.scrollHeight > el.clientHeight + 2 ? [el.className || el.textContent] : [];
+  }))).toEqual([]);
+  await page.keyboard.press('Enter');
+  await expect(headlines).toBeVisible();
+  await expect(board).toBeHidden();
+  await expect(page.locator('.tv-receiver-market')).toBeVisible();
+  await chooseTvBroadcast(page, 'technology');
+  await toggle.focus();
+  await page.keyboard.press('Enter');
+  await expect(board).toHaveAttribute('data-movers-channel', 'technology');
+  await expect(board.locator('li')).toHaveCount(20);
+  await expect(board).toContainText('TECHG4');
+  await expect(board).not.toContainText('KWG4');
+  await page.keyboard.press('Enter');
+  await expect(headlines).toBeVisible();
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  await expect(board).toBeVisible();
+  await expect(board.locator('li')).toHaveCount(20);
+  await expect(headlines).toBeVisible();
+});

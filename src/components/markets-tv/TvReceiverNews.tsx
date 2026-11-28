@@ -3,6 +3,7 @@ import { useEffect, useMemo } from 'react';
 import type { TvLanguage, TvNews } from '@/lib/markets-tv/types';
 import { receiverNewsPath, receiverNewsPayload, TV_EXTRA_NEWS_CHANNELS, type TvReceiverNewsChannel } from '@/lib/markets-tv/newsReceiver';
 import { channelTickerPath } from '@/lib/markets-tv/channelTicker';
+import { TvNewsMovers } from './TvNewsMovers';
 import { TvPageTicker } from './TvPageTicker';
 import { receiverText } from '@/lib/markets-tv/receiver';
 import { tvQuoteTime, tvText } from '@/lib/markets-tv/i18n';
@@ -13,9 +14,10 @@ import { TvNewsDesk } from './TvNewsDesk';
 import { TvNewsStatus } from './TvNewsStatus';
 import { requestTvResource } from './tvResourceCache';
 
-export function TvReceiverNews({ language, channel, now, revision, onStory, onRefresh, playing, onPaginationAvailable }: {
+export function TvReceiverNews({ language, channel, now, revision, onStory, onRefresh, playing, onPaginationAvailable, separateMovers = false, moversExpanded = false, onMoversAvailable }: {
   language: TvLanguage; channel: TvReceiverNewsChannel; now: number; revision: number; playing: boolean;
   onStory: (story: TvNews) => void; onRefresh: () => void; onPaginationAvailable?: (available: boolean) => void;
+  separateMovers?: boolean; moversExpanded?: boolean; onMoversAvailable?: (available: boolean) => void;
 }) {
   // Fetch the selected feed first, then warm at most one adjacent public channel.
   const news = useTvResource<unknown>(receiverNewsPath(channel, language), 180000, '', revision);
@@ -33,6 +35,7 @@ export function TvReceiverNews({ language, channel, now, revision, onStory, onRe
     return()=>{clearTimeout(timer);controller.abort();};
   },[channel,language,news.data,news.error]);
   return <aside className="tv-receiver-news" aria-busy={news.loading}>
+    <div className="tv-receiver-news-body" hidden={moversExpanded}>
     {news.loading && !news.data ? <TvNewsStatus language={language} loading/> : <>
       {(news.error || feed.invalid) && feed.stories.length > 0 && <p role="status">{tvText(language, 'error')} <button onClick={onRefresh}>{tvText(language, 'retry')}</button></p>}
       <p className="tv-receiver-notice">
@@ -43,6 +46,8 @@ export function TvReceiverNews({ language, channel, now, revision, onStory, onRe
       {!feed.stories.length && (news.error || feed.invalid) ? <TvNewsStatus language={language} error={news.error || 'INVALID_FEED'} onRetry={onRefresh}/>
         : channel === 'kuwait' ? <TvHeadlines news={feed.stories} language={language} now={now} onStory={onStory} playing={playing}/> : <TvNewsDesk key={`${channel}:${language}`} news={feed.stories} language={language} now={now} onStory={onStory} playing={playing} onPaginationAvailable={onPaginationAvailable}/>}
     </>}
+    </div>
+    {channel !== 'kuwait' && <TvNewsMovers channel={channel} language={language} revision={revision} tickerPath={channelTickerPath(channel, news.data)} separate={separateMovers} expanded={moversExpanded} onAvailable={onMoversAvailable}/>}
     {channel !== 'kuwait' && <TvPageTicker path={channelTickerPath(channel, news.data)} fallbackData={channel === 'underDollarNews' ? news.data : undefined} loading={news.loading}/>}
   </aside>;
 }

@@ -2,14 +2,14 @@ import 'server-only';
 import { verifiedUnderOne } from './specialQuotes';
 
 const exchanges = ['NASDAQ', 'NYSE', 'AMEX'];
-const columns = ['name', 'description', 'exchange', 'type', 'currency', 'close', 'change', 'update_time', 'typespecs'];
+const columns = ['name', 'description', 'exchange', 'type', 'currency', 'close', 'change', 'update_time', 'typespecs', 'volume'];
 
 export function underDollarQuotes(payload: unknown) {
   if (!payload || typeof payload !== 'object' || !('data' in payload) || !Array.isArray(payload.data)) return [];
   const seen = new Set<string>();
   return payload.data.flatMap((row: unknown) => {
     if (!row || typeof row !== 'object' || !('s' in row) || !('d' in row) || !Array.isArray(row.d)) return [];
-    const [symbol, name, exchange, type, currency, price, changePercent, seconds, specs] = row.d as unknown[];
+    const [symbol, name, exchange, type, currency, price, changePercent, seconds, specs, volume] = row.d as unknown[];
     if (typeof symbol !== 'string' || !/^[A-Z][A-Z0-9.-]{0,14}$/.test(symbol) || typeof exchange !== 'string'
       || !exchanges.includes(exchange) || row.s !== exchange + ':' + symbol || seen.has(symbol)
       || type !== 'stock' || currency !== 'USD' || !Array.isArray(specs) || !specs.includes('common')
@@ -21,6 +21,7 @@ export function underDollarQuotes(payload: unknown) {
     seen.add(symbol);
     return [{ symbol, name: typeof name === 'string' && name.trim() ? name : symbol, exchange,
       price, currency, asOf, changePercent: typeof changePercent === 'number' && Number.isFinite(changePercent) ? changePercent : null,
+      volume: typeof volume === 'number' && Number.isFinite(volume) && volume >= 0 ? volume : null,
       assetType: 'stock', source: 'TradingView', available: true, delayed: true }];
   }).slice(0, 12);
 }
